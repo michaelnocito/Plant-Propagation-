@@ -9,6 +9,8 @@ dependencies = [
     "httpx>=0.28",
     "pydantic>=2.10",
     "python-multipart>=0.0.18",
+    "sqlalchemy[asyncio]>=2.0",
+    "aiosqlite>=0.20",
 ]
 
 [tool.ruff]

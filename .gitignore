@@ -8,6 +8,12 @@ dist/
 # Virtual envs
 .venv/
 venv/
+.smoke_venv/
+
+# Local databases / scratch
+*.db
+_smoke*
+_preview*
 
 # Env / secrets
 .env

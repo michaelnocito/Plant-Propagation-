@@ -1,6 +1,61 @@
 const $ = (id) => document.getElementById(id);
-const pick = $("pick"), status = $("status"), card = $("card");
+const pick = $("pick"), status = $("status"), card = $("card"), chip = $("chip"), picker = $("picker");
 
+const esc = (s) =>
+  String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+const CATS = [
+  ["houseplants", "Houseplants"], ["propagating", "Propagating"],
+  ["outdoor", "Outdoor"], ["for_sale", "For Sale"], ["wishlist", "Wishlist"],
+];
+const catLabel = (v) => (CATS.find((c) => c[0] === v) || [v, v])[1];
+
+let members = [];
+let me = null;
+let activeTab = "identify";
+let currentResult = null;   // the PropResult being shown
+let currentSaved = null;    // PlantOut if this result is a saved plant, else null
+let lastThumb = "";         // small base64 thumb of the just-taken photo
+let mineRows = [], familyRows = [];
+const filterState = { mine: "all", family: "all" };
+
+const memberBy = (slug) => members.find((m) => m.slug === slug) || { display_name: slug || "?", color: "#7fa07a", slug };
+const isMember = (slug) => members.some((m) => m.slug === slug);
+
+/* ---------- identity ---------- */
+function renderChip() {
+  const m = memberBy(me);
+  chip.textContent = (m.display_name[0] || "?").toUpperCase();
+  chip.style.background = m.color;
+}
+function showPicker() {
+  $("who-cards").innerHTML = members
+    .map((m) => `<div class="who-card" data-slug="${m.slug}">
+      <div class="av" style="background:${m.color}">${esc((m.display_name[0] || "?").toUpperCase())}</div>
+      <span>${esc(m.display_name)}</span></div>`)
+    .join("");
+  $("who-cards").querySelectorAll(".who-card").forEach((el) => (el.onclick = () => setMe(el.dataset.slug)));
+  picker.classList.add("on");
+}
+function setMe(slug) {
+  me = slug;
+  localStorage.setItem("rootwork_user", slug);
+  renderChip();
+  picker.classList.remove("on");
+  if (activeTab === "mine") loadMine();
+  if (currentResult) renderSavebar();
+}
+
+/* ---------- tabs ---------- */
+function showTab(name) {
+  activeTab = name;
+  document.querySelectorAll(".view").forEach((v) => v.classList.toggle("on", v.id === "view-" + name));
+  document.querySelectorAll("nav.tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
+  if (name === "mine") loadMine();
+  if (name === "family") loadFamily();
+}
+
+/* ---------- identify ---------- */
 pick.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -8,6 +63,7 @@ pick.addEventListener("change", async (e) => {
   status.className = "status";
   status.textContent = "Reading photo…";
   const blob = await compress(file);
+  lastThumb = await thumbDataURL(file);
   $("thumb").src = URL.createObjectURL(blob);
   $("thumb").style.display = "block";
   status.textContent = "Identifying & assessing…";
@@ -16,7 +72,7 @@ pick.addEventListener("change", async (e) => {
     fd.append("file", blob, "plant.jpg");
     const r = await fetch("/propagate", { method: "POST", body: fd });
     if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
-    render(await r.json());
+    showResult(await r.json(), null, "");
     status.textContent = "";
   } catch (err) {
     status.className = "status err";
@@ -24,7 +80,6 @@ pick.addEventListener("change", async (e) => {
   }
 });
 
-// downscale to max 1024px, JPEG ~0.8 to cut upload size
 async function compress(file) {
   const img = await createImageBitmap(file);
   const max = 1024, s = Math.min(1, max / Math.max(img.width, img.height));
@@ -33,6 +88,209 @@ async function compress(file) {
   c.height = Math.round(img.height * s);
   c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
   return new Promise((res) => c.toBlob(res, "image/jpeg", 0.8));
+}
+async function thumbDataURL(file) {
+  const img = await createImageBitmap(file);
+  const max = 160, s = Math.min(1, max / Math.max(img.width, img.height));
+  const c = document.createElement("canvas");
+  c.width = Math.round(img.width * s);
+  c.height = Math.round(img.height * s);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", 0.7);
+}
+
+/* ---------- result + save bar ---------- */
+function showResult(d, saved, thumb) {
+  currentResult = d;
+  currentSaved = saved;
+  render(d);
+  if (thumb) {
+    $("thumb").src = thumb;
+    $("thumb").style.display = "block";
+  } else if (saved) {
+    $("thumb").style.display = "none";
+  }
+  renderSavebar();
+  showTab("identify");
+  card.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderSavebar() {
+  const bar = $("savebar");
+  if (!currentSaved) {
+    bar.innerHTML = `<button class="savebtn" id="saveBtn">＋ Save to My Plants</button>`;
+    $("saveBtn").onclick = doSave;
+    return;
+  }
+  const p = currentSaved;
+  const m = memberBy(p.owner);
+  const mine = p.owner === me;
+  if (!mine) {
+    bar.innerHTML = `<div class="savedrow"><div class="who">Saved by <b>${esc(m.display_name)}</b>${
+      p.nickname ? ` · “${esc(p.nickname)}”` : ""
+    }</div><div class="pickline"><span class="cat" style="color:var(--copper);border-color:#ddd2b6">${catLabel(
+      p.category
+    )}</span></div></div>`;
+    return;
+  }
+  const opts = CATS.map(([v, l]) => `<option value="${v}" ${p.category === v ? "selected" : ""}>${l}</option>`).join("");
+  bar.innerHTML = `<div class="savedrow">
+    <div class="who">In <b>${esc(m.display_name)}’s</b> plants</div>
+    <div class="seg" id="visSeg">
+      <button data-v="private" class="${p.visibility === "private" ? "on" : ""}">Private</button>
+      <button data-v="family" class="${p.visibility === "family" ? "on" : ""}">Family</button>
+    </div>
+    <div class="pickline"><label>Category</label><select id="catSel">${opts}</select></div>
+    <input class="nick" id="nickInp" placeholder="Add a nickname (optional)" value="${esc(p.nickname)}" />
+    <button class="delbtn" id="delBtn">Remove from my plants</button>
+  </div>`;
+  $("visSeg").querySelectorAll("button").forEach((b) => (b.onclick = () => patch({ visibility: b.dataset.v })));
+  $("catSel").onchange = (e) => patch({ category: e.target.value }, false);
+  $("nickInp").onblur = (e) => patch({ nickname: e.target.value }, false);
+  $("delBtn").onclick = doDelete;
+}
+
+async function doSave() {
+  if (!me) return showPicker();
+  const btn = $("saveBtn");
+  btn.disabled = true;
+  btn.textContent = "Saving…";
+  try {
+    const r = await fetch("/plants", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-User": me },
+      body: JSON.stringify({
+        visibility: "private",
+        category: "houseplants",
+        nickname: "",
+        species: currentResult.species,
+        common_name: currentResult.common_name,
+        ai_result: currentResult,
+        thumbnail: lastThumb || "",
+      }),
+    });
+    if (!r.ok) throw new Error();
+    currentSaved = await r.json();
+    renderSavebar();
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = "Save failed — tap to retry";
+  }
+}
+
+async function patch(fields, rerender = true) {
+  try {
+    const r = await fetch("/plants/" + currentSaved.id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-User": me },
+      body: JSON.stringify(fields),
+    });
+    if (r.ok) {
+      currentSaved = await r.json();
+      if (rerender) renderSavebar();
+    }
+  } catch (e) { /* keep UI as-is */ }
+}
+
+async function doDelete() {
+  if (!confirm("Remove this plant from your collection?")) return;
+  await fetch("/plants/" + currentSaved.id, { method: "DELETE", headers: { "X-User": me } });
+  currentSaved = null;
+  $("thumb").style.display = "none";
+  card.style.display = "none";
+  showTab("mine");
+}
+
+/* ---------- collections ---------- */
+async function loadMine() {
+  if (!me) return showPicker();
+  const grid = $("mine-grid");
+  grid.innerHTML = `<div class="empty" style="grid-column:1/-1">Loading…</div>`;
+  try {
+    mineRows = await (await fetch("/plants/mine", { headers: { "X-User": me } })).json();
+  } catch (e) { mineRows = []; }
+  drawCollection("mine", mineRows);
+}
+async function loadFamily() {
+  const grid = $("family-grid");
+  grid.innerHTML = `<div class="empty" style="grid-column:1/-1">Loading…</div>`;
+  try {
+    familyRows = await (await fetch("/plants/family")).json();
+  } catch (e) { familyRows = []; }
+  drawCollection("family", familyRows);
+}
+
+function drawCollection(view, rows) {
+  const grid = $(view + "-grid"), filt = $(view + "-filters");
+  const present = CATS.map((c) => c[0]).filter((c) => rows.some((r) => r.category === c));
+  const cats = ["all", ...present];
+  if (!present.length) filterState[view] = "all";
+  filt.innerHTML = cats
+    .map((c) => `<button data-c="${c}" class="${filterState[view] === c ? "on" : ""}">${c === "all" ? "All" : catLabel(c)}</button>`)
+    .join("");
+  filt.querySelectorAll("button").forEach((b) => (b.onclick = () => { filterState[view] = b.dataset.c; drawCollection(view, rows); }));
+
+  const shown = rows.filter((r) => filterState[view] === "all" || r.category === filterState[view]);
+  if (!shown.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">${
+      view === "mine"
+        ? "No saved plants yet.<br>Identify a plant and tap <b>Save</b>."
+        : "Nothing shared yet.<br>Save a plant as <b>Family</b> to add it here."
+    }</div>`;
+    return;
+  }
+  grid.innerHTML = shown.map(pcard).join("");
+  grid.querySelectorAll(".pcard").forEach((el, i) => (el.onclick = () => showResult(shown[i].ai_result, shown[i], shown[i].thumbnail)));
+}
+
+function pcard(p) {
+  const m = memberBy(p.owner);
+  const img = p.thumbnail ? `<img class="ph" src="${p.thumbnail}" alt="">` : `<div class="noph">🪴</div>`;
+  const title = p.nickname || p.common_name || p.species;
+  const sub = p.nickname ? p.common_name || p.species : p.species;
+  return `<div class="pcard">${img}<div class="body">
+    <div class="nm">${esc(title)}</div>
+    <div class="sp">${esc(sub)}</div>
+    <div class="meta">
+      <span class="own" style="background:${m.color}" title="${esc(m.display_name)}">${esc((m.display_name[0] || "?").toUpperCase())}</span>
+      <span class="cat">${catLabel(p.category)}</span>
+      ${p.visibility === "family" ? `<span class="cat">Family</span>` : ""}
+    </div></div></div>`;
+}
+
+/* ---------- result rendering (care / diagnosis / propagation / resale) ---------- */
+const DX_TITLE = { healthy: "Looks healthy", watch: "Worth watching", issue: "Needs attention" };
+
+function renderCare(c) {
+  $("soil").innerHTML =
+    `<div class="soilopt"><b>Buy it · all-in-one</b><span>${esc(c.soil_store_bought)}</span></div>` +
+    `<div class="soilopt"><b>Mix it · DIY</b><span>${esc(c.soil_diy)}</span></div>`;
+  const rows = [
+    ["Sunlight", c.sunlight], ["Watering", c.watering], ["Humidity", c.humidity],
+    ["Temp", c.temperature], ["Feeding", c.feeding],
+  ];
+  $("care").innerHTML = rows
+    .filter(([, v]) => v)
+    .map(([k, v]) => `<div class="c"><b>${k}</b><span>${esc(v)}</span></div>`)
+    .join("");
+}
+
+function renderDiagnosis(dx) {
+  const st = ["healthy", "watch", "issue"].includes(dx.status) ? dx.status : "watch";
+  const issues = (dx.issues || [])
+    .map((i) => {
+      const sev = ["low", "medium", "high"].includes(i.severity) ? i.severity : "medium";
+      const remedy = i.home_remedy ? `<div class="lab">Home remedy</div><p>${esc(i.home_remedy)}</p>` : "";
+      const link = i.learn_query
+        ? `<a href="https://www.google.com/search?q=${encodeURIComponent(i.learn_query)}" target="_blank" rel="noopener">How to fix this →</a>`
+        : "";
+      return `<div class="issue"><div class="issue-h"><b>${esc(i.condition)}</b><span class="sev ${sev}">${sev}</span></div>${
+        i.signs ? `<div class="lab">What I'm seeing</div><p>${esc(i.signs)}</p>` : ""
+      }<div class="lab">Do this</div><p>${esc(i.action)}</p>${remedy}${link}</div>`;
+    })
+    .join("");
+  $("dx").className = `dx ${st}`;
+  $("dx").innerHTML = `<div class="dx-top"><span class="dot"></span>${DX_TITLE[st]}</div><div class="dx-sum">${esc(dx.summary)}</div>${issues}`;
 }
 
 function links(species) {
@@ -44,71 +302,40 @@ function links(species) {
   ];
 }
 
-const esc = (s) =>
-  String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
-const DX_TITLE = { healthy: "Looks healthy", watch: "Worth watching", issue: "Needs attention" };
-
-function renderCare(c) {
-  $("soil").innerHTML =
-    `<div class="soilopt"><b>Buy it · all-in-one</b><span>${esc(c.soil_store_bought)}</span></div>` +
-    `<div class="soilopt"><b>Mix it · DIY</b><span>${esc(c.soil_diy)}</span></div>`;
-  const rows = [
-    ["Sunlight", c.sunlight],
-    ["Watering", c.watering],
-    ["Humidity", c.humidity],
-    ["Temp", c.temperature],
-    ["Feeding", c.feeding],
-  ];
-  $("care").innerHTML = rows
-    .filter(([, v]) => v)
-    .map(([k, v]) => `<div class="c"><b>${k}</b><span>${esc(v)}</span></div>`)
-    .join("");
-}
-
-function renderDiagnosis(dx) {
-  const status = ["healthy", "watch", "issue"].includes(dx.status) ? dx.status : "watch";
-  const issues = (dx.issues || [])
-    .map((i) => {
-      const sev = ["low", "medium", "high"].includes(i.severity) ? i.severity : "medium";
-      const remedy = i.home_remedy
-        ? `<div class="lab">Home remedy</div><p>${esc(i.home_remedy)}</p>` : "";
-      const link = i.learn_query
-        ? `<a href="https://www.google.com/search?q=${encodeURIComponent(i.learn_query)}" target="_blank" rel="noopener">How to fix this →</a>` : "";
-      return (
-        `<div class="issue"><div class="issue-h"><b>${esc(i.condition)}</b>` +
-        `<span class="sev ${sev}">${sev}</span></div>` +
-        (i.signs ? `<div class="lab">What I'm seeing</div><p>${esc(i.signs)}</p>` : "") +
-        `<div class="lab">Do this</div><p>${esc(i.action)}</p>` +
-        remedy + link + `</div>`
-      );
-    })
-    .join("");
-  $("dx").className = `dx ${status}`;
-  $("dx").innerHTML =
-    `<div class="dx-top"><span class="dot"></span>${DX_TITLE[status]}</div>` +
-    `<div class="dx-sum">${esc(dx.summary)}</div>` + issues;
-}
-
 function render(d) {
   $("name").textContent = d.common_name;
-  $("latin").textContent =
-    d.confidence ? `${d.species} · ${Math.round(d.confidence * 100)}% match` : d.species;
+  $("latin").textContent = d.confidence ? `${d.species} · ${Math.round(d.confidence * 100)}% match` : d.species;
   $("score").textContent = d.marketability.score;
   renderDiagnosis(d.diagnosis);
   renderCare(d.care);
-  $("tags").innerHTML = [d.method, d.difficulty, d.timeline]
-    .map((t) => `<span class="tag">${esc(t)}</span>`).join("");
+  $("tags").innerHTML = [d.method, d.difficulty, d.timeline].map((t) => `<span class="tag">${esc(t)}</span>`).join("");
   $("svg").innerHTML = d.diagram_svg;
   $("steps").innerHTML = d.steps.map((s) => `<li>${esc(s)}</li>`).join("");
   const m = d.marketability;
-  $("selltop").innerHTML =
-    `<span class="price">${m.est_price_range}</span> · ${m.demand} demand · ${m.rarity}`;
+  $("selltop").innerHTML = `<span class="price">${esc(m.est_price_range)}</span> · ${esc(m.demand)} demand · ${esc(m.rarity)}`;
   $("sellnotes").textContent = m.sell_notes;
   $("links").innerHTML = links(d.species)
-    .map(([l, u]) => `<a href="${u}" target="_blank" rel="noopener">${l}</a>`).join("");
+    .map(([l, u]) => `<a href="${u}" target="_blank" rel="noopener">${l}</a>`)
+    .join("");
   card.style.display = "block";
 }
 
-if ("serviceWorker" in navigator)
-  navigator.serviceWorker.register("/sw.js").catch(() => {});
+/* ---------- boot ---------- */
+chip.onclick = showPicker;
+document.querySelectorAll("nav.tabs button").forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
+
+(async function init() {
+  try {
+    members = await (await fetch("/members")).json();
+  } catch (e) {
+    members = [{ slug: "mike", display_name: "Mike", color: "#c0703a" }, { slug: "kelly", display_name: "Kelly", color: "#5f8d6b" }];
+  }
+  me = localStorage.getItem("rootwork_user");
+  if (me && isMember(me)) renderChip();
+  else {
+    me = null;
+    showPicker();
+  }
+})();
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});

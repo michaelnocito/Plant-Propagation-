@@ -21,13 +21,18 @@
   body{
     margin:0; background:var(--ink); color:var(--parch);
     font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    -webkit-font-smoothing:antialiased; padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    -webkit-font-smoothing:antialiased; padding:env(safe-area-inset-top) 0 0;
   }
-  header{padding:22px 20px 8px}
+  header{padding:18px 20px 6px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px}
   h1{font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;
-     font-size:30px; letter-spacing:.5px; margin:0; font-weight:600}
-  header p{margin:4px 0 0; color:var(--muted); font-size:13px}
-  main{padding:14px 16px 40px; max-width:560px; margin:0 auto}
+     font-size:28px; letter-spacing:.5px; margin:0; font-weight:600}
+  header p{margin:3px 0 0; color:var(--muted); font-size:12.5px}
+  /* identity chip */
+  .chip{flex:none; width:40px; height:40px; border-radius:50%; border:2px solid rgba(255,255,255,.25);
+    display:grid; place-items:center; color:#fff; font-weight:700; font-size:16px; cursor:pointer;
+    font-family:Georgia,serif}
+  main{padding:8px 16px 96px; max-width:560px; margin:0 auto}
+  .view{display:none} .view.on{display:block}
   .shoot{
     display:block; width:100%; border:1px dashed var(--line); border-radius:16px;
     background:var(--ink2); color:var(--sage); padding:28px; text-align:center;
@@ -94,58 +99,162 @@
   .issue a{color:var(--copper); font-size:13px; border-bottom:1.5px solid var(--copper);
      text-decoration:none; display:inline-block; margin-top:9px}
   .err{color:#e2a06a}
+  /* save bar (inside card) */
+  .savebar{margin:4px 0 14px}
+  .savebtn{width:100%; border:none; border-radius:12px; padding:13px; font-size:16px; font-weight:600;
+    background:var(--copper); color:#fff; cursor:pointer}
+  .savedrow{background:var(--parch2); border-radius:12px; padding:12px}
+  .savedrow .who{font-size:13px; color:#5b6f57; margin-bottom:9px}
+  .savedrow .who b{color:var(--ink)}
+  .seg{display:inline-flex; background:#fff; border:1px solid #ddd2b6; border-radius:999px; overflow:hidden}
+  .seg button{border:none; background:none; padding:7px 14px; font-size:13px; color:#5b6f57; cursor:pointer}
+  .seg button.on{background:var(--copper); color:#fff}
+  .pickline{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px}
+  .pickline label{font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:#8a7a64}
+  select,.nick{border:1px solid #ddd2b6; border-radius:9px; padding:8px 10px; font-size:14px;
+    background:#fff; color:var(--ink); font-family:inherit}
+  .nick{width:100%; margin-top:10px}
+  .delbtn{background:none; border:none; color:#b34a2c; font-size:13px; cursor:pointer; margin-top:10px;
+    text-decoration:underline}
+  /* collection grid */
+  .filters{display:flex; gap:8px; overflow-x:auto; padding:4px 0 12px; -webkit-overflow-scrolling:touch}
+  .filters button{flex:none; border:1px solid var(--line); background:var(--ink2); color:var(--muted);
+    border-radius:999px; padding:7px 13px; font-size:13px; cursor:pointer}
+  .filters button.on{background:var(--sage); color:var(--ink); border-color:var(--sage); font-weight:600}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .pcard{background:var(--ink2); border:1px solid var(--line); border-radius:14px; overflow:hidden;
+    cursor:pointer; display:flex; flex-direction:column}
+  .pcard .ph{aspect-ratio:1/1; width:100%; object-fit:cover; background:#0c160f; display:block}
+  .pcard .noph{aspect-ratio:1/1; display:grid; place-items:center; font-size:30px; background:#0c160f; color:var(--sage)}
+  .pcard .body{padding:10px 11px 12px}
+  .pcard .nm{font-size:14px; font-weight:600; color:var(--parch); line-height:1.25}
+  .pcard .sp{font-size:11px; color:var(--muted); font-style:italic; margin-top:1px}
+  .pcard .meta{display:flex; gap:6px; align-items:center; margin-top:8px; flex-wrap:wrap}
+  .pcard .cat{font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:var(--sage);
+    border:1px solid var(--line); border-radius:999px; padding:2px 7px}
+  .pcard .own{width:16px; height:16px; border-radius:50%; display:grid; place-items:center;
+    font-size:9px; color:#fff; font-weight:700; font-family:Georgia,serif}
+  .empty{color:var(--muted); text-align:center; padding:48px 20px; font-size:14px; line-height:1.5}
+  .vh{font-family:"Iowan Old Style",Georgia,serif; font-size:22px; margin:6px 0 12px}
+  /* bottom tab bar */
+  nav.tabs{position:fixed; left:0; right:0; bottom:0; z-index:20;
+    background:rgba(15,28,20,.92); backdrop-filter:blur(10px); border-top:1px solid var(--line);
+    display:flex; padding-bottom:env(safe-area-inset-bottom)}
+  nav.tabs button{flex:1; border:none; background:none; color:var(--muted); padding:9px 4px 8px;
+    font-size:11px; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer}
+  nav.tabs button svg{width:23px; height:23px; stroke:currentColor; fill:none; stroke-width:1.8}
+  nav.tabs button.on{color:var(--sage)}
+  /* identity picker */
+  .picker{position:fixed; inset:0; z-index:40; background:var(--ink); display:none;
+    flex-direction:column; align-items:center; justify-content:center; gap:20px; padding:32px;
+    padding-top:calc(env(safe-area-inset-top) + 32px)}
+  .picker.on{display:flex}
+  .picker h2{font-family:"Iowan Old Style",Georgia,serif; font-size:26px; margin:0; text-align:center}
+  .picker p{color:var(--muted); margin:-8px 0 8px; font-size:13.5px; text-align:center}
+  .who-cards{display:flex; gap:16px; flex-wrap:wrap; justify-content:center}
+  .who-card{width:130px; background:var(--ink2); border:1px solid var(--line); border-radius:18px;
+    padding:22px 16px; display:flex; flex-direction:column; align-items:center; gap:10px; cursor:pointer}
+  .who-card .av{width:64px; height:64px; border-radius:50%; display:grid; place-items:center;
+    color:#fff; font-size:26px; font-weight:700; font-family:Georgia,serif}
+  .who-card span{font-size:17px; font-weight:600}
   @media (prefers-reduced-motion:no-preference){.card{animation:rise .35s ease}}
   @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 </style>
 </head>
 <body>
 <header>
-  <h1>Rootwork</h1>
-  <p>Photograph a plant — health check-up, full care, propagation & resale.</p>
+  <div>
+    <h1>Rootwork</h1>
+    <p>Photograph a plant — care, check-up & propagation.</p>
+  </div>
+  <div id="chip" class="chip" title="Switch person"></div>
 </header>
+
 <main>
-  <label class="shoot" for="pick">
-    <strong>Take or choose a photo</strong>
-    Leaf, stem, or whole plant works best
-  </label>
-  <input id="pick" type="file" accept="image/*" capture="environment" />
-  <img id="thumb" class="thumb" alt="" />
-  <div id="status" class="status"></div>
+  <!-- IDENTIFY -->
+  <section id="view-identify" class="view on">
+    <label class="shoot" for="pick">
+      <strong>Take or choose a photo</strong>
+      Leaf, stem, or whole plant works best
+    </label>
+    <input id="pick" type="file" accept="image/*" capture="environment" />
+    <img id="thumb" class="thumb" alt="" />
+    <div id="status" class="status"></div>
 
-  <article id="card" class="card">
-    <div id="seal" class="seal"><b id="score">–</b><span>resale</span></div>
-    <h2 id="name"></h2>
-    <em id="latin"></em>
+    <article id="card" class="card">
+      <div id="seal" class="seal"><b id="score">–</b><span>resale</span></div>
+      <h2 id="name"></h2>
+      <em id="latin"></em>
 
-    <div class="sec">
-      <h3 class="sec-h">Plant check-up</h3>
-      <div id="dx"></div>
-    </div>
+      <div class="sec"><div id="savebar" class="savebar"></div></div>
 
-    <div class="sec">
-      <h3 class="sec-h">How to make me super</h3>
-      <div class="soil2" id="soil"></div>
-      <div class="care" id="care"></div>
-    </div>
-
-    <div class="sec">
-      <h3 class="sec-h">Propagate me</h3>
-      <div class="row" id="tags"></div>
-      <div class="plate"><div id="svg"></div></div>
-      <ol id="steps"></ol>
-    </div>
-
-    <div class="sec">
-      <h3 class="sec-h">Resale read</h3>
-      <div class="sell">
-        <div id="selltop"></div>
-        <div id="sellnotes" style="margin-top:6px;font-size:14px"></div>
+      <div class="sec">
+        <h3 class="sec-h">Plant check-up</h3>
+        <div id="dx"></div>
       </div>
-    </div>
 
-    <div class="links" id="links" style="margin-top:14px"></div>
-  </article>
+      <div class="sec">
+        <h3 class="sec-h">How to make me super</h3>
+        <div class="soil2" id="soil"></div>
+        <div class="care" id="care"></div>
+      </div>
+
+      <div class="sec">
+        <h3 class="sec-h">Propagate me</h3>
+        <div class="row" id="tags"></div>
+        <div class="plate"><div id="svg"></div></div>
+        <ol id="steps"></ol>
+      </div>
+
+      <div class="sec">
+        <h3 class="sec-h">Resale read</h3>
+        <div class="sell">
+          <div id="selltop"></div>
+          <div id="sellnotes" style="margin-top:6px;font-size:14px"></div>
+        </div>
+      </div>
+
+      <div class="links" id="links" style="margin-top:14px"></div>
+    </article>
+  </section>
+
+  <!-- MY PLANTS -->
+  <section id="view-mine" class="view">
+    <h2 class="vh">My plants</h2>
+    <div id="mine-filters" class="filters"></div>
+    <div id="mine-grid" class="grid"></div>
+  </section>
+
+  <!-- FAMILY -->
+  <section id="view-family" class="view">
+    <h2 class="vh">Family garden</h2>
+    <div id="family-filters" class="filters"></div>
+    <div id="family-grid" class="grid"></div>
+  </section>
 </main>
+
+<nav class="tabs">
+  <button data-tab="identify" class="on">
+    <svg viewBox="0 0 24 24"><path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L19 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2z" transform="translate(0)"/><circle cx="12" cy="13" r="4"/></svg>
+    Identify
+  </button>
+  <button data-tab="mine">
+    <svg viewBox="0 0 24 24"><path d="M12 21c-4-2-7-5-7-9a4 4 0 0 1 7-2.5A4 4 0 0 1 19 12c0 4-3 7-7 9z"/><path d="M12 9v12"/></svg>
+    My plants
+  </button>
+  <button data-tab="family">
+    <svg viewBox="0 0 24 24"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M2 20c0-3 2.5-5 6-5M22 20c0-3-2.5-5-6-5M9 20c0-2 1.5-3.5 3-3.5s3 1.5 3 3.5"/></svg>
+    Family
+  </button>
+</nav>
+
+<!-- WHO ARE YOU -->
+<div id="picker" class="picker">
+  <h2>Who's gardening?</h2>
+  <p>Pick yourself — no password. You can switch anytime.</p>
+  <div id="who-cards" class="who-cards"></div>
+</div>
+
 <script src="/app.js"></script>
 </body>
 </html>

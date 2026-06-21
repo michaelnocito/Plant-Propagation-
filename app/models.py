@@ -49,3 +49,40 @@ class PropResult(BaseModel):
     care: Care
     diagnosis: Diagnosis
     marketability: Marketability
+
+
+# ---- saved-plant collection ----
+
+CATEGORIES = {"houseplants", "propagating", "outdoor", "for_sale", "wishlist"}
+VISIBILITIES = {"private", "family"}
+
+
+class PlantIn(BaseModel):
+    visibility: str = "private"
+    category: str = "houseplants"
+    nickname: str = ""
+    species: str = ""
+    common_name: str = ""
+    ai_result: dict  # the full PropResult payload as saved
+    thumbnail: str = ""  # small base64 data URI
+
+
+class PlantPatch(BaseModel):
+    visibility: str | None = None
+    category: str | None = None
+    nickname: str | None = None
+
+
+class PlantOut(BaseModel):
+    id: int
+    owner: str  # slug
+    owner_name: str
+    owner_color: str
+    visibility: str
+    category: str
+    nickname: str
+    species: str
+    common_name: str
+    ai_result: dict
+    thumbnail: str
+    created_at: str

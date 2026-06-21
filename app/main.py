@@ -1,13 +1,26 @@
+import json
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from .claude import enrich
+from .db import MEMBERS, Plant, Session, get_user, init_db
+from .models import CATEGORIES, VISIBILITIES, PlantIn, PlantOut, PlantPatch
 from .plantid import IDError, identify
 
-app = FastAPI(title="Rootwork")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+
+
+app = FastAPI(title="Rootwork", lifespan=lifespan)
 STATIC = Path(__file__).parent / "static"
 
 
@@ -28,6 +41,125 @@ async def propagate(file: UploadFile):
         raise HTTPException(502, f"Enrich failed: {e}") from e
     result.confidence = round(score, 2)
     return result
+
+
+# ---- household + saved plants ----
+
+
+def _out(p: Plant) -> PlantOut:
+    return PlantOut(
+        id=p.id,
+        owner=p.owner.slug,
+        owner_name=p.owner.display_name,
+        owner_color=p.owner.color,
+        visibility=p.visibility,
+        category=p.category,
+        nickname=p.nickname,
+        species=p.species,
+        common_name=p.common_name,
+        ai_result=json.loads(p.ai_result),
+        thumbnail=p.thumbnail,
+        created_at=p.created_at.isoformat(),
+    )
+
+
+async def _require_user(s, slug: str | None):
+    user = await get_user(s, (slug or "").strip().lower()) if slug else None
+    if not user:
+        raise HTTPException(401, "Pick who you are first.")
+    return user
+
+
+@app.get("/members")
+async def members():
+    return MEMBERS
+
+
+@app.post("/plants", response_model=PlantOut)
+async def save_plant(body: PlantIn, x_user: str | None = Header(default=None)):
+    if body.visibility not in VISIBILITIES:
+        raise HTTPException(400, "Bad visibility.")
+    if body.category not in CATEGORIES:
+        raise HTTPException(400, "Bad category.")
+    async with Session() as s:
+        user = await _require_user(s, x_user)
+        p = Plant(
+            owner_id=user.id,
+            visibility=body.visibility,
+            category=body.category,
+            nickname=body.nickname.strip()[:80],
+            species=body.species or body.ai_result.get("species", ""),
+            common_name=body.common_name or body.ai_result.get("common_name", ""),
+            ai_result=json.dumps(body.ai_result),
+            thumbnail=body.thumbnail,
+        )
+        s.add(p)
+        await s.commit()
+        await s.refresh(p, ["owner"])
+        return _out(p)
+
+
+@app.get("/plants/mine", response_model=list[PlantOut])
+async def my_plants(x_user: str | None = Header(default=None)):
+    async with Session() as s:
+        user = await _require_user(s, x_user)
+        rows = (
+            await s.execute(
+                select(Plant)
+                .options(selectinload(Plant.owner))
+                .where(Plant.owner_id == user.id)
+                .order_by(Plant.created_at.desc())
+            )
+        ).scalars().all()
+        return [_out(p) for p in rows]
+
+
+@app.get("/plants/family", response_model=list[PlantOut])
+async def family_plants():
+    async with Session() as s:
+        rows = (
+            await s.execute(
+                select(Plant)
+                .options(selectinload(Plant.owner))
+                .where(Plant.visibility == "family")
+                .order_by(Plant.created_at.desc())
+            )
+        ).scalars().all()
+        return [_out(p) for p in rows]
+
+
+@app.patch("/plants/{plant_id}", response_model=PlantOut)
+async def update_plant(plant_id: int, body: PlantPatch, x_user: str | None = Header(default=None)):
+    async with Session() as s:
+        user = await _require_user(s, x_user)
+        p = await s.get(Plant, plant_id)
+        if not p or p.owner_id != user.id:
+            raise HTTPException(404, "Not found.")
+        if body.visibility is not None:
+            if body.visibility not in VISIBILITIES:
+                raise HTTPException(400, "Bad visibility.")
+            p.visibility = body.visibility
+        if body.category is not None:
+            if body.category not in CATEGORIES:
+                raise HTTPException(400, "Bad category.")
+            p.category = body.category
+        if body.nickname is not None:
+            p.nickname = body.nickname.strip()[:80]
+        await s.commit()
+        await s.refresh(p, ["owner"])
+        return _out(p)
+
+
+@app.delete("/plants/{plant_id}")
+async def delete_plant(plant_id: int, x_user: str | None = Header(default=None)):
+    async with Session() as s:
+        user = await _require_user(s, x_user)
+        p = await s.get(Plant, plant_id)
+        if not p or p.owner_id != user.id:
+            raise HTTPException(404, "Not found.")
+        await s.delete(p)
+        await s.commit()
+        return {"ok": True}
 
 
 @app.get("/")

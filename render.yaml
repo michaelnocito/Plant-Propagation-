@@ -2,12 +2,18 @@ services:
   - type: web
     name: rootwork
     runtime: python
-    plan: free
+    plan: starter
     buildCommand: pip install .
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    disk:
+      name: rootwork-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: "3.13.4"
+      - key: DB_PATH
+        value: /var/data/rootwork.db
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: PLANTNET_API_KEY
