@@ -59,6 +59,7 @@ def _out(p: Plant) -> PlantOut:
         common_name=p.common_name,
         ai_result=json.loads(p.ai_result),
         thumbnail=p.thumbnail,
+        in_market=p.in_market,
         created_at=p.created_at.isoformat(),
     )
 
@@ -92,6 +93,7 @@ async def save_plant(body: PlantIn, x_user: str | None = Header(default=None)):
             common_name=body.common_name or body.ai_result.get("common_name", ""),
             ai_result=json.dumps(body.ai_result),
             thumbnail=body.thumbnail,
+            in_market=body.in_market,
         )
         s.add(p)
         await s.commit()
@@ -145,9 +147,26 @@ async def update_plant(plant_id: int, body: PlantPatch, x_user: str | None = Hea
             p.category = body.category
         if body.nickname is not None:
             p.nickname = body.nickname.strip()[:80]
+        if body.in_market is not None:
+            p.in_market = body.in_market
         await s.commit()
         await s.refresh(p, ["owner"])
         return _out(p)
+
+
+@app.get("/plants/market", response_model=list[PlantOut])
+async def market_plants():
+    """Every plant either owner has listed on the marketplace."""
+    async with Session() as s:
+        rows = (
+            await s.execute(
+                select(Plant)
+                .options(selectinload(Plant.owner))
+                .where(Plant.in_market.is_(True))
+                .order_by(Plant.created_at.desc())
+            )
+        ).scalars().all()
+        return [_out(p) for p in rows]
 
 
 @app.delete("/plants/{plant_id}")

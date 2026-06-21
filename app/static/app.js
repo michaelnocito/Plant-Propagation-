@@ -53,6 +53,7 @@ function showTab(name) {
   document.querySelectorAll("nav.tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
   if (name === "mine") loadMine();
   if (name === "family") loadFamily();
+  if (name === "market") loadMarket();
 }
 
 /* ---------- identify ---------- */
@@ -118,8 +119,11 @@ function showResult(d, saved, thumb) {
 function renderSavebar() {
   const bar = $("savebar");
   if (!currentSaved) {
-    bar.innerHTML = `<button class="savebtn" id="saveBtn">＋ Save to My Plants</button>`;
-    $("saveBtn").onclick = doSave;
+    bar.innerHTML =
+      `<button class="savebtn" id="saveBtn">＋ Save to My Plants</button>` +
+      `<button class="savebtn alt" id="saveMktBtn">＋ Save &amp; list on Marketplace</button>`;
+    $("saveBtn").onclick = () => doSave(false);
+    $("saveMktBtn").onclick = () => doSave(true);
     return;
   }
   const p = currentSaved;
@@ -142,19 +146,24 @@ function renderSavebar() {
     </div>
     <div class="pickline"><label>Category</label><select id="catSel">${opts}</select></div>
     <input class="nick" id="nickInp" placeholder="Add a nickname (optional)" value="${esc(p.nickname)}" />
+    <button class="mktbtn ${p.in_market ? "on" : ""}" id="mktBtn">${
+      p.in_market ? "✓ Listed on Marketplace" : "＋ List on Marketplace"
+    }</button>
     <button class="delbtn" id="delBtn">Remove from my plants</button>
   </div>`;
   $("visSeg").querySelectorAll("button").forEach((b) => (b.onclick = () => patch({ visibility: b.dataset.v })));
   $("catSel").onchange = (e) => patch({ category: e.target.value }, false);
   $("nickInp").onblur = (e) => patch({ nickname: e.target.value }, false);
+  $("mktBtn").onclick = () => patch({ in_market: !currentSaved.in_market });
   $("delBtn").onclick = doDelete;
 }
 
-async function doSave() {
+async function doSave(inMarket) {
   if (!me) return showPicker();
-  const btn = $("saveBtn");
-  btn.disabled = true;
-  btn.textContent = "Saving…";
+  const btns = [$("saveBtn"), $("saveMktBtn")].filter(Boolean);
+  const btn = inMarket ? $("saveMktBtn") : $("saveBtn");
+  btns.forEach((b) => (b.disabled = true));
+  if (btn) btn.textContent = "Saving…";
   try {
     const r = await fetch("/plants", {
       method: "POST",
@@ -167,14 +176,15 @@ async function doSave() {
         common_name: currentResult.common_name,
         ai_result: currentResult,
         thumbnail: lastThumb || "",
+        in_market: !!inMarket,
       }),
     });
     if (!r.ok) throw new Error();
     currentSaved = await r.json();
     renderSavebar();
   } catch (e) {
-    btn.disabled = false;
-    btn.textContent = "Save failed — tap to retry";
+    btns.forEach((b) => (b.disabled = false));
+    if (btn) btn.textContent = "Save failed — tap to retry";
   }
 }
 
@@ -255,7 +265,79 @@ function pcard(p) {
       <span class="own" style="background:${m.color}" title="${esc(m.display_name)}">${esc((m.display_name[0] || "?").toUpperCase())}</span>
       <span class="cat">${catLabel(p.category)}</span>
       ${p.visibility === "family" ? `<span class="cat">Family</span>` : ""}
+      ${p.in_market ? `<span class="mkt">Market</span>` : ""}
     </div></div></div>`;
+}
+
+/* ---------- marketplace ---------- */
+let marketRows = [];
+let marketSort = "opp";
+const EASE = { easy: 1, moderate: 0.6, hard: 0.35 };
+const MSORTS = [["opp", "Best bets"], ["prop", "Cuttings $"], ["plant", "Whole-plant $"], ["easy", "Easiest"]];
+
+function parsePrice(str) {
+  const nums = String(str || "").replace(/,/g, "").match(/\d+(\.\d+)?/g);
+  return nums ? Math.max(...nums.map(Number)) : 0;
+}
+function metrics(p) {
+  const a = p.ai_result || {};
+  const m = a.marketability || {};
+  const e = a.established || null;
+  const propScore = m.score || 0;
+  const estScore = e ? e.score || 0 : 0;
+  const ease = EASE[(m.propagation_ease || "").toLowerCase()] ?? 0.6;
+  const opp = Math.round(Math.max(propScore, estScore) * ease * 10) / 10; // 0–10: value × easiness
+  return { m, e, propScore, estScore, ease, opp, propPrice: parsePrice(m.est_price_range), estPrice: e ? parsePrice(e.est_price_range) : 0 };
+}
+
+async function loadMarket() {
+  const list = $("market-list");
+  list.innerHTML = `<div class="empty">Loading…</div>`;
+  try {
+    marketRows = await (await fetch("/plants/market")).json();
+  } catch (e) {
+    marketRows = [];
+  }
+  drawMarket();
+}
+
+function drawMarket() {
+  const sortEl = $("market-sort"), list = $("market-list");
+  sortEl.innerHTML = MSORTS.map(([k, l]) => `<button data-s="${k}" class="${marketSort === k ? "on" : ""}">${l}</button>`).join("");
+  sortEl.querySelectorAll("button").forEach((b) => (b.onclick = () => { marketSort = b.dataset.s; drawMarket(); }));
+  if (!marketRows.length) {
+    list.innerHTML = `<div class="empty">Nothing listed yet.<br>Open a plant and tap <b>List on Marketplace</b> (or use <b>Save &amp; list</b> when saving).</div>`;
+    return;
+  }
+  const rows = marketRows.map((p) => ({ p, x: metrics(p) }));
+  const cmp = {
+    opp: (a, b) => b.x.opp - a.x.opp,
+    prop: (a, b) => b.x.propPrice - a.x.propPrice || b.x.propScore - a.x.propScore,
+    plant: (a, b) => b.x.estPrice - a.x.estPrice || b.x.estScore - a.x.estScore,
+    easy: (a, b) => b.x.ease - a.x.ease || Math.max(b.x.propScore, b.x.estScore) - Math.max(a.x.propScore, a.x.estScore),
+  }[marketSort];
+  rows.sort(cmp);
+  list.innerHTML = rows.map(({ p, x }) => mrow(p, x)).join("");
+  list.querySelectorAll(".mrow").forEach((el, i) => (el.onclick = () => showResult(rows[i].p.ai_result, rows[i].p, rows[i].p.thumbnail)));
+}
+
+function mrow(p, x) {
+  const m = memberBy(p.owner);
+  const img = p.thumbnail ? `<img class="mph" src="${p.thumbnail}" alt="">` : `<div class="mnoph">🪴</div>`;
+  const title = p.nickname || p.common_name || p.species;
+  const ease = (x.m.propagation_ease || "").toLowerCase();
+  return `<div class="mrow">${img}
+    <div>
+      <div class="mname">${esc(title)} <span class="owndot" style="background:${m.color}" title="${esc(m.display_name)}">${esc((m.display_name[0] || "?").toUpperCase())}</span></div>
+      <div class="msp">${esc(p.common_name || p.species)}</div>
+      <div class="mtags">
+        <span>✂️ <b>${x.propScore || "–"}</b> ${esc(x.m.est_price_range || "")}</span>
+        ${x.e ? `<span>🪴 <b>${x.estScore || "–"}</b> ${esc(x.e.est_price_range || "")}</span>` : ""}
+        <span class="ease-${ease}">${esc(cap(ease) || "—")} prop</span>
+      </div>
+    </div>
+    <div class="opp"><div class="on">${x.opp}</div><div class="ol">sell score</div></div>
+  </div>`;
 }
 
 /* ---------- result rendering (care / diagnosis / propagation / resale) ---------- */
@@ -362,7 +444,6 @@ function links(species) {
 function render(d) {
   $("name").textContent = d.common_name;
   $("latin").textContent = d.confidence ? `${d.species} · ${Math.round(d.confidence * 100)}% match` : d.species;
-  $("score").textContent = d.marketability.score;
   renderDiagnosis(d.diagnosis);
   renderSummary(d);
   renderCareDetail(d.care);
@@ -370,13 +451,45 @@ function render(d) {
   $("tags").innerHTML = [d.method, d.difficulty, d.timeline].map((t) => `<span class="tag">${esc(t)}</span>`).join("");
   $("svg").innerHTML = d.diagram_svg;
   $("steps").innerHTML = d.steps.map((s) => `<li>${esc(s)}</li>`).join("");
-  const m = d.marketability;
-  $("selltop").innerHTML = `<span class="price">${esc(m.est_price_range)}</span> · ${esc(m.demand)} demand · ${esc(m.rarity)}`;
-  $("sellnotes").textContent = m.sell_notes;
+  renderResale(d);
   $("links").innerHTML = links(d.species)
     .map(([l, u]) => `<a href="${u}" target="_blank" rel="noopener">${l}</a>`)
     .join("");
   card.style.display = "block";
+}
+
+/* ---------- resale (cuttings + whole plant) ---------- */
+const cap = (s) => (s ? String(s)[0].toUpperCase() + String(s).slice(1) : "");
+
+function rcard(title, score, price, meta, notes) {
+  return `<div class="rcard">
+    <div class="rh"><span class="rt">${title}</span><span class="rs">${score ?? "–"}<small>/10</small></span></div>
+    <div class="price">${esc(price || "—")}</div>
+    <div class="meta">${esc(meta || "")}</div>
+    ${notes ? `<div class="notes">${esc(notes)}</div>` : ""}
+  </div>`;
+}
+
+function renderResale(d) {
+  const m = d.marketability || {};
+  const e = d.established;
+  let html = `<div class="resale2">`;
+  html += rcard(
+    "✂️ Cuttings / props",
+    m.score,
+    m.est_price_range,
+    `${cap(m.demand)} demand · ${cap(m.rarity)} · ${cap(m.propagation_ease)} to propagate`,
+    m.sell_notes
+  );
+  if (e)
+    html += rcard(
+      "🪴 Whole plant",
+      e.score,
+      e.est_price_range,
+      `${cap(e.demand)} demand${e.best_size_to_sell ? ` · best at ${e.best_size_to_sell}` : ""}`,
+      e.sell_notes
+    );
+  $("resale").innerHTML = html + `</div>`;
 }
 
 /* ---------- boot ---------- */

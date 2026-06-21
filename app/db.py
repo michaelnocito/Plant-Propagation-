@@ -62,13 +62,25 @@ class Plant(Base):
     nickname: Mapped[str] = mapped_column(String(80), default="")
     ai_result: Mapped[str] = mapped_column(Text)  # full saved AI response, JSON string
     thumbnail: Mapped[str] = mapped_column(Text, default="")  # small base64 data URI
+    in_market: Mapped[bool] = mapped_column(default=False)  # listed on the family marketplace
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     owner: Mapped[User] = relationship(back_populates="plants")
+
+
+async def _ensure_columns(conn) -> None:
+    """Tiny forward-only migration: add columns missing from an existing plants table
+    (create_all only creates missing TABLES, not new columns on existing ones)."""
+    from sqlalchemy import text
+
+    cols = {r[1] for r in (await conn.exec_driver_sql("PRAGMA table_info(plants)")).all()}
+    if "in_market" not in cols:
+        await conn.execute(text("ALTER TABLE plants ADD COLUMN in_market BOOLEAN DEFAULT 0 NOT NULL"))
 
 
 async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _ensure_columns(conn)
     async with Session() as s:
         existing = {u.slug for u in (await s.execute(select(User))).scalars()}
         for m in MEMBERS:

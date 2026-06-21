@@ -69,12 +69,19 @@ Return ONLY a JSON object (no markdown, no prose) with these exact keys:
     ]
   }},
   "marketability": {{
-    "score": 1-10 integer (sellability of cuttings on Etsy/FB Marketplace),
+    "score": 1-10 integer (sellability of CUTTINGS / propagations on Etsy/FB Marketplace),
     "demand": "low | medium | high",
     "est_price_range": "e.g. $5-12 per cutting",
     "rarity": "common | uncommon | rare",
     "propagation_ease": "easy | moderate | hard",
     "sell_notes": "one line: pitch + best venue"
+  }},
+  "established": {{
+    "score": 1-10 integer (sellability of the WHOLE ESTABLISHED/POTTED plant, not cuttings),
+    "demand": "low | medium | high",
+    "est_price_range": "price for a healthy established specimen, e.g. $35-90",
+    "best_size_to_sell": "the size/stage that fetches the best price, e.g. '6in pot, 2-3 ft, full'",
+    "sell_notes": "one line: pitch + best venue for selling the whole plant"
   }}
 }}
 
@@ -99,6 +106,10 @@ If something is ambiguous, use status "watch" and say what to keep an eye on.
 LIGHT & TEMPERATURE must be RANGES with a real thriving zone — never a single vague word
 like "low light". If a plant only survives (but won't thrive) in dim light, say that in
 "floor" and put where it's happiest in "thriving". Make placements concrete.
+
+RESALE: rate "marketability" for CUTTINGS (yield + price-per-cutting + demand) and "established"
+for the WHOLE potted plant — they often differ (slow rare plants sell better whole; fast easy
+plants sell better as cheap cuttings).
 
 Order the steps and care for a beginner. Output JSON only."""
 

@@ -2,11 +2,23 @@ from pydantic import BaseModel, Field
 
 
 class Marketability(BaseModel):
+    """Sellability of propagated cuttings."""
+
     score: int = Field(ge=1, le=10)
     demand: str
     est_price_range: str
     rarity: str
     propagation_ease: str
+    sell_notes: str
+
+
+class EstablishedResale(BaseModel):
+    """Sellability of the whole established/potted plant (not cuttings)."""
+
+    score: int = Field(ge=1, le=10)
+    demand: str
+    est_price_range: str  # for a healthy, established specimen
+    best_size_to_sell: str  # e.g. "6in pot, 2-3 ft tall"
     sell_notes: str
 
 
@@ -68,7 +80,8 @@ class PropResult(BaseModel):
     diagram_svg: str
     care: Care
     diagnosis: Diagnosis
-    marketability: Marketability
+    marketability: Marketability  # cuttings / propagation resale
+    established: EstablishedResale  # whole-plant resale
 
 
 # ---- saved-plant collection ----
@@ -85,12 +98,14 @@ class PlantIn(BaseModel):
     common_name: str = ""
     ai_result: dict  # the full PropResult payload as saved
     thumbnail: str = ""  # small base64 data URI
+    in_market: bool = False  # listed on the family marketplace
 
 
 class PlantPatch(BaseModel):
     visibility: str | None = None
     category: str | None = None
     nickname: str | None = None
+    in_market: bool | None = None
 
 
 class PlantOut(BaseModel):
@@ -105,4 +120,5 @@ class PlantOut(BaseModel):
     common_name: str
     ai_result: dict
     thumbnail: str
+    in_market: bool
     created_at: str

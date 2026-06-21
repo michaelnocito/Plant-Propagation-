@@ -136,6 +136,10 @@
   .savebar{margin:4px 0 14px}
   .savebtn{width:100%; border:none; border-radius:12px; padding:13px; font-size:16px; font-weight:600;
     background:var(--copper); color:#fff; cursor:pointer}
+  .savebtn.alt{background:var(--ink); color:var(--parch); margin-top:8px}
+  .mktbtn{width:100%; border:1px solid var(--copper); border-radius:10px; padding:11px; margin-top:12px;
+    font-size:14.5px; font-weight:600; background:#fff; color:var(--copper); cursor:pointer}
+  .mktbtn.on{background:var(--copper); color:#fff}
   .savedrow{background:var(--parch2); border-radius:12px; padding:12px}
   .savedrow .who{font-size:13px; color:#5b6f57; margin-bottom:9px}
   .savedrow .who b{color:var(--ink)}
@@ -168,7 +172,37 @@
   .pcard .own{width:16px; height:16px; border-radius:50%; display:grid; place-items:center;
     font-size:9px; color:#fff; font-weight:700; font-family:Georgia,serif}
   .empty{color:var(--muted); text-align:center; padding:48px 20px; font-size:14px; line-height:1.5}
-  .vh{font-family:"Iowan Old Style",Georgia,serif; font-size:22px; margin:6px 0 12px}
+  .pcard .mkt{font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:#e2b07a;
+    border:1px solid #6a5230; border-radius:999px; padding:2px 7px}
+  .vh{font-family:"Iowan Old Style",Georgia,serif; font-size:22px; margin:6px 0 4px}
+  .mkt-sub{color:var(--muted); font-size:13px; margin:0 0 12px; line-height:1.4}
+  /* resale: two ratings (cuttings + whole plant) in the detail card */
+  .resale2{display:grid; gap:10px}
+  .rcard{background:var(--ink2); color:var(--parch); border-radius:12px; padding:13px 14px}
+  .rcard .rh{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .rcard .rt{font-size:13px; text-transform:uppercase; letter-spacing:.5px; color:var(--sage)}
+  .rcard .rs{font-family:Georgia,serif; font-size:20px; font-weight:700; color:var(--parch)}
+  .rcard .rs small{font-size:11px; color:var(--muted); font-weight:400}
+  .rcard .price{color:var(--copper); font-weight:600; font-size:15px; margin-top:6px}
+  .rcard .meta{color:var(--muted); font-size:12.5px; margin-top:2px}
+  .rcard .notes{font-size:13.5px; margin-top:7px; line-height:1.45}
+  /* marketplace rows */
+  .mrow{display:grid; grid-template-columns:54px 1fr auto; gap:12px; align-items:center;
+    background:var(--ink2); border:1px solid var(--line); border-radius:14px; padding:11px 12px;
+    margin-bottom:10px; cursor:pointer}
+  .mrow .mph{width:54px; height:54px; border-radius:10px; object-fit:cover; background:#0c160f}
+  .mrow .mnoph{width:54px; height:54px; border-radius:10px; display:grid; place-items:center;
+    background:#0c160f; font-size:24px}
+  .mrow .mname{font-size:15px; font-weight:600; color:var(--parch); line-height:1.2}
+  .mrow .msp{font-size:11px; color:var(--muted); font-style:italic}
+  .mrow .mtags{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; font-size:12px; color:var(--parch)}
+  .mrow .mtag b{color:var(--sage); font-weight:600}
+  .mrow .ease-easy{color:#7fbf6a} .mrow .ease-moderate{color:#dcb455} .mrow .ease-hard{color:#e08a5a}
+  .mrow .opp{text-align:center; min-width:58px}
+  .mrow .opp .on{font-family:Georgia,serif; font-size:22px; font-weight:700; color:var(--copper)}
+  .mrow .opp .ol{font-size:9px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted)}
+  .mrow .owndot{display:inline-grid; place-items:center; width:15px; height:15px; border-radius:50%;
+    font-size:8px; color:#fff; font-weight:700; font-family:Georgia,serif; vertical-align:middle}
   /* bottom tab bar */
   nav.tabs{position:fixed; left:0; right:0; bottom:0; z-index:20;
     background:rgba(15,28,20,.92); backdrop-filter:blur(10px); border-top:1px solid var(--line);
@@ -249,11 +283,7 @@
 
         <div class="sec">
           <h3 class="sec-h">Resale read</h3>
-          <div id="seal" class="seal"><b id="score">–</b><span>resale</span></div>
-          <div class="sell">
-            <div id="selltop"></div>
-            <div id="sellnotes" style="margin-top:6px;font-size:14px"></div>
-          </div>
+          <div id="resale"></div>
         </div>
 
         <div class="links" id="links" style="margin-top:14px"></div>
@@ -274,6 +304,14 @@
     <div id="family-filters" class="filters"></div>
     <div id="family-grid" class="grid"></div>
   </section>
+
+  <!-- MARKETPLACE -->
+  <section id="view-market" class="view">
+    <h2 class="vh">Marketplace</h2>
+    <p class="mkt-sub">Plants you've listed to sell — ranked for the easiest, most profitable wins.</p>
+    <div id="market-sort" class="filters"></div>
+    <div id="market-list"></div>
+  </section>
 </main>
 
 <nav class="tabs">
@@ -288,6 +326,10 @@
   <button data-tab="family">
     <svg viewBox="0 0 24 24"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M2 20c0-3 2.5-5 6-5M22 20c0-3-2.5-5-6-5M9 20c0-2 1.5-3.5 3-3.5s3 1.5 3 3.5"/></svg>
     Family
+  </button>
+  <button data-tab="market">
+    <svg viewBox="0 0 24 24"><path d="M20.6 11.4 12.6 3.4a2 2 0 0 0-1.4-.6H5a2 2 0 0 0-2 2v6.2a2 2 0 0 0 .6 1.4l8 8a2 2 0 0 0 2.8 0l6.2-6.2a2 2 0 0 0 0-2.8z"/><circle cx="7.5" cy="7.5" r="1.3"/></svg>
+    Market
   </button>
 </nav>
 
