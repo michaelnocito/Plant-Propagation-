@@ -10,15 +10,35 @@ class Marketability(BaseModel):
     sell_notes: str
 
 
+class Light(BaseModel):
+    """Light as a survives→thrives→too-much range, not a vague label."""
+
+    floor: str    # dimmest it tolerates (survives, won't thrive) — be specific
+    thriving: str  # the zone where it actually flourishes
+    ceiling: str  # brightest it can take before leaf damage
+
+
+class Temp(BaseModel):
+    """Temperature band in °F: cold-damage floor → thriving band → heat-stress ceiling."""
+
+    min_f: int      # below this = cold damage
+    ideal_low_f: int
+    ideal_high_f: int
+    max_f: int      # above this = heat stress
+    note: str = ""
+
+
 class Care(BaseModel):
     """Everything needed to keep this plant thriving."""
 
+    light: Light
+    temp: Temp
     soil_store_bought: str  # the all-in-one bagged option + what to look for
     soil_diy: str  # a mix recipe in parts
-    sunlight: str
+    soil_short: str  # one-line soil pick for the summary view
     watering: str
+    water_short: str  # one-line watering for the summary view
     humidity: str
-    temperature: str
     feeding: str
 
 

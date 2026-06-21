@@ -261,18 +261,75 @@ function pcard(p) {
 /* ---------- result rendering (care / diagnosis / propagation / resale) ---------- */
 const DX_TITLE = { healthy: "Looks healthy", watch: "Worth watching", issue: "Needs attention" };
 
-function renderCare(c) {
-  $("soil").innerHTML =
-    `<div class="soilopt"><b>Buy it · all-in-one</b><span>${esc(c.soil_store_bought)}</span></div>` +
-    `<div class="soilopt"><b>Mix it · DIY</b><span>${esc(c.soil_diy)}</span></div>`;
-  const rows = [
-    ["Sunlight", c.sunlight], ["Watering", c.watering], ["Humidity", c.humidity],
-    ["Temp", c.temperature], ["Feeding", c.feeding],
+/* light & temperature as min→thrives→max ranges (used by BOTH summary and detail) */
+const hasLight = (c) => !!(c && c.light && typeof c.light === "object");
+const hasTemp = (c) => !!(c && c.temp && typeof c.temp === "object");
+const sunThriving = (c) => (hasLight(c) ? c.light.thriving : c.sunlight || "—");
+const soilShort = (c) => c.soil_short || c.soil_store_bought || "—";
+const waterShort = (c) => c.water_short || c.watering || "—";
+const tempIdeal = (c) => (hasTemp(c) ? `${c.temp.ideal_low_f}–${c.temp.ideal_high_f}°F sweet spot` : c.temperature || "—");
+
+function tempBar(t) {
+  const span = Math.max(1, t.max_f - t.min_f);
+  const clamp = (x) => Math.max(0, Math.min(100, x));
+  const l = clamp(((t.ideal_low_f - t.min_f) / span) * 100);
+  const w = clamp(((t.ideal_high_f - t.ideal_low_f) / span) * 100);
+  return `<div class="rb">
+    <div class="rb-track"><div class="rb-band" style="left:${l}%;width:${w}%"></div></div>
+    <div class="rb-ends"><span>${t.min_f}°F</span><span class="rb-mid">Thrives ${t.ideal_low_f}–${t.ideal_high_f}°F</span><span>${t.max_f}°F</span></div>
+    ${t.note ? `<div class="rb-note">${esc(t.note)}</div>` : ""}
+  </div>`;
+}
+
+function lightZones(L) {
+  return `<div class="lz">
+    <div class="lz-cell"><b>Min · survives</b><span>${esc(L.floor)}</span></div>
+    <div class="lz-cell on"><b>Thrives</b><span>${esc(L.thriving)}</span></div>
+    <div class="lz-cell"><b>Max</b><span>${esc(L.ceiling)}</span></div>
+  </div>`;
+}
+
+function renderSummary(d) {
+  const c = d.care || {};
+  const tiles = [
+    ["☀️ Sun", sunThriving(c)], ["🪴 Soil", soilShort(c)], ["💧 Water", waterShort(c)],
+    ["🌡️ Temp", tempIdeal(c)], ["💦 Humidity", c.humidity || "—"],
   ];
-  $("care").innerHTML = rows
-    .filter(([, v]) => v)
+  let html = `<div class="sgrid">${tiles
+    .map(([k, v]) => `<div class="stile"><div class="sk">${k}</div><div class="sv">${esc(v)}</div></div>`)
+    .join("")}</div>`;
+  if (hasLight(c)) html += `<div class="srange"><div class="srk">Light range</div>${lightZones(c.light)}</div>`;
+  if (hasTemp(c)) html += `<div class="srange"><div class="srk">Temperature</div>${tempBar(c.temp)}</div>`;
+  $("summary").innerHTML = html;
+}
+
+function renderCareDetail(c) {
+  let html = `<div class="soil2">
+    <div class="soilopt"><b>Buy it · all-in-one</b><span>${esc(c.soil_store_bought)}</span></div>
+    <div class="soilopt"><b>Mix it · DIY</b><span>${esc(c.soil_diy)}</span></div>
+  </div>`;
+  if (hasLight(c)) html += `<div class="caresub">Light — survives → thrives → too much</div>${lightZones(c.light)}`;
+  else if (c.sunlight) html += `<div class="caresub">Sunlight</div><div class="care"><div class="c"><span>${esc(c.sunlight)}</span></div></div>`;
+  if (hasTemp(c)) html += `<div class="caresub">Temperature</div>${tempBar(c.temp)}`;
+  else if (c.temperature) html += `<div class="caresub">Temperature</div><div class="care"><div class="c"><span>${esc(c.temperature)}</span></div></div>`;
+  const rows = [["Watering", c.watering], ["Humidity", c.humidity], ["Feeding", c.feeding]].filter(([, v]) => v);
+  html += `<div class="care" style="margin-top:15px">${rows
     .map(([k, v]) => `<div class="c"><b>${k}</b><span>${esc(v)}</span></div>`)
-    .join("");
+    .join("")}</div>`;
+  $("care").innerHTML = html;
+}
+
+/* summary ⇄ detail toggle (sticky preference) */
+let viewMode = localStorage.getItem("rootwork_mode") || "detail";
+function applyMode() {
+  $("summary").classList.toggle("on", viewMode === "summary");
+  $("detailBody").style.display = viewMode === "summary" ? "none" : "block";
+  document.querySelectorAll("#modeToggle button").forEach((b) => b.classList.toggle("on", b.dataset.mode === viewMode));
+}
+function setMode(m) {
+  viewMode = m;
+  localStorage.setItem("rootwork_mode", m);
+  applyMode();
 }
 
 function renderDiagnosis(dx) {
@@ -307,7 +364,9 @@ function render(d) {
   $("latin").textContent = d.confidence ? `${d.species} · ${Math.round(d.confidence * 100)}% match` : d.species;
   $("score").textContent = d.marketability.score;
   renderDiagnosis(d.diagnosis);
-  renderCare(d.care);
+  renderSummary(d);
+  renderCareDetail(d.care);
+  applyMode();
   $("tags").innerHTML = [d.method, d.difficulty, d.timeline].map((t) => `<span class="tag">${esc(t)}</span>`).join("");
   $("svg").innerHTML = d.diagram_svg;
   $("steps").innerHTML = d.steps.map((s) => `<li>${esc(s)}</li>`).join("");
@@ -323,6 +382,7 @@ function render(d) {
 /* ---------- boot ---------- */
 chip.onclick = showPicker;
 document.querySelectorAll("nav.tabs button").forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
+document.querySelectorAll("#modeToggle button").forEach((b) => (b.onclick = () => setMode(b.dataset.mode)));
 
 (async function init() {
   try {

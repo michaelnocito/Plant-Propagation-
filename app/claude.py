@@ -34,12 +34,24 @@ Return ONLY a JSON object (no markdown, no prose) with these exact keys:
   "steps": ["short imperative step", "..."],
   "diagram_svg": "self-contained inline SVG (viewBox 0 0 200 200, no external refs, 2-3 colors, simple line art) of the propagation method",
   "care": {{
+    "light": {{
+      "floor": "the DIMMEST light it merely survives in (be specific about placement/intensity, e.g. '~3 ft from a north window — survives but growth stalls and gets leggy'). Do NOT just say 'low light'.",
+      "thriving": "the light zone where it actually FLOURISHES — specific (e.g. 'bright indirect, an east window or 2-3 ft back from a south/west one; ~6 hrs of bright ambient')",
+      "ceiling": "the BRIGHTEST it can take before leaf damage (e.g. 'a few hrs of direct morning sun is fine; harsh midday/afternoon sun scorches')"
+    }},
+    "temp": {{
+      "min_f": integer °F below which it suffers cold damage,
+      "ideal_low_f": integer °F (low end of the thriving band),
+      "ideal_high_f": integer °F (high end of the thriving band),
+      "max_f": integer °F above which it suffers heat stress,
+      "note": "what to avoid (cold drafts, AC/heat vents, cold glass)"
+    }},
     "soil_store_bought": "the bagged all-in-one to grab + what to read on the label (e.g. 'a peat/coir all-purpose indoor potting mix with perlite — avoid garden soil or heavy 6-month feed'). Name product TYPES, examples ok.",
     "soil_diy": "a mix-it-yourself recipe in PARTS with what each ingredient does (e.g. '2 parts coir + 1 part perlite + 1 part bark — coir holds water, perlite/bark add air')",
-    "sunlight": "light level in plain terms (bright direct / bright indirect / medium / low) + where to put it",
+    "soil_short": "ONE short line naming the soil to use (e.g. 'Chunky, well-draining aroid mix')",
     "watering": "describe by soil feel ('water when top X inches are dry'), how to water, and the over- vs under-water tells",
+    "water_short": "ONE short line (e.g. 'When top 2 in. dry — roughly weekly')",
     "humidity": "target range + how to raise it if needed",
-    "temperature": "comfortable range + what to avoid (drafts, vents, cold glass)",
     "feeding": "fertilizer type, strength, and season/cadence"
   }},
   "diagnosis": {{
@@ -84,6 +96,10 @@ If something is ambiguous, use status "watch" and say what to keep an eye on.
   * Sunburn or too-little-light: move/adjust light; trim damaged leaves (they won't recover).
 - Prefer commercial insecticidal soap over DIY dish-soap sprays (homemade can burn leaves).
 
+LIGHT & TEMPERATURE must be RANGES with a real thriving zone — never a single vague word
+like "low light". If a plant only survives (but won't thrive) in dim light, say that in
+"floor" and put where it's happiest in "thriving". Make placements concrete.
+
 Order the steps and care for a beginner. Output JSON only."""
 
 
@@ -108,7 +124,7 @@ async def enrich(species: str, common: str, image: bytes, content_type: str | No
     ]
     msg = await client.messages.create(
         model=MODEL,
-        max_tokens=3500,
+        max_tokens=4000,
         messages=[{"role": "user", "content": content}],
     )
     text = "".join(b.text for b in msg.content if b.type == "text")
