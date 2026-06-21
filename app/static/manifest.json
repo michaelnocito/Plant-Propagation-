@@ -1,0 +1,15 @@
+{
+  "name": "Rootwork",
+  "short_name": "Rootwork",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1c14",
+  "theme_color": "#0f1c14",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%230f1c14'/%3E%3Cpath d='M96 150c0-30 0-60 0-90' stroke='%237fa07a' stroke-width='6' fill='none'/%3E%3Cpath d='M96 96c-22 0-40-14-44-36 24 0 42 14 44 36zM96 120c22 0 40-14 44-36-24 0-42 14-44 36z' fill='%237fa07a'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
