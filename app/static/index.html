@@ -58,6 +58,41 @@
   .sell .price{color:var(--copper); font-weight:600}
   .links a{display:inline-block; margin:6px 8px 0 0; color:var(--ink);
      text-decoration:none; border-bottom:1.5px solid var(--copper); font-size:14px}
+  /* section headers */
+  .sec{margin-top:20px}
+  .sec-h{font-family:"Iowan Old Style",Georgia,serif; font-size:17px; margin:0 0 10px;
+     padding-bottom:5px; border-bottom:1px solid #ddd2b6; color:var(--ink); font-weight:600}
+  /* care */
+  .soil2{display:grid; gap:8px; margin-bottom:12px}
+  .soilopt{background:var(--parch2); border-radius:10px; padding:10px 12px}
+  .soilopt b{display:block; font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+     color:#7a5a39; margin-bottom:3px}
+  .soilopt span{font-size:14px; line-height:1.45}
+  .care{display:grid; gap:11px}
+  .care .c{display:grid; grid-template-columns:92px 1fr; gap:10px; align-items:start}
+  .care .c b{font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:#6b7d63; padding-top:2px}
+  .care .c span{font-size:14px; line-height:1.45}
+  /* diagnosis */
+  .dx{border-radius:12px; padding:12px 14px}
+  .dx.healthy{background:#e7f0e0; border:1px solid #bcd3ac}
+  .dx.watch{background:#f6efd8; border:1px solid #e3d29a}
+  .dx.issue{background:#f4e2d8; border:1px solid #e0b59c}
+  .dx-top{display:flex; align-items:center; gap:8px; font-weight:600; font-size:15px}
+  .dot{width:10px; height:10px; border-radius:50%; flex:none}
+  .dx.healthy .dot{background:#4f9b3f}
+  .dx.watch .dot{background:#cf9a1e}
+  .dx.issue .dot{background:#c0451f}
+  .dx-sum{font-size:14px; margin-top:5px; line-height:1.45}
+  .issue{background:#fff; border:1px solid #ead9c8; border-radius:10px; padding:11px 12px; margin-top:10px}
+  .issue-h{display:flex; justify-content:space-between; align-items:center; gap:8px}
+  .issue-h b{font-size:15px}
+  .sev{font-size:10px; text-transform:uppercase; letter-spacing:.5px; padding:3px 8px;
+     border-radius:999px; color:#fff; flex:none}
+  .sev.low{background:#6b9a52} .sev.medium{background:#cf9a1e} .sev.high{background:#c0451f}
+  .issue .lab{font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; color:#9a8a72; margin-top:9px}
+  .issue p{margin:2px 0 0; font-size:14px; line-height:1.45}
+  .issue a{color:var(--copper); font-size:13px; border-bottom:1.5px solid var(--copper);
+     text-decoration:none; display:inline-block; margin-top:9px}
   .err{color:#e2a06a}
   @media (prefers-reduced-motion:no-preference){.card{animation:rise .35s ease}}
   @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -66,7 +101,7 @@
 <body>
 <header>
   <h1>Rootwork</h1>
-  <p>Photograph a plant — get propagation steps & resale read.</p>
+  <p>Photograph a plant — health check-up, full care, propagation & resale.</p>
 </header>
 <main>
   <label class="shoot" for="pick">
@@ -81,13 +116,33 @@
     <div id="seal" class="seal"><b id="score">–</b><span>resale</span></div>
     <h2 id="name"></h2>
     <em id="latin"></em>
-    <div class="row" id="tags"></div>
-    <div class="plate"><div id="svg"></div></div>
-    <ol id="steps"></ol>
-    <div class="sell">
-      <div id="selltop"></div>
-      <div id="sellnotes" style="margin-top:6px;font-size:14px"></div>
+
+    <div class="sec">
+      <h3 class="sec-h">Plant check-up</h3>
+      <div id="dx"></div>
     </div>
+
+    <div class="sec">
+      <h3 class="sec-h">How to make me super</h3>
+      <div class="soil2" id="soil"></div>
+      <div class="care" id="care"></div>
+    </div>
+
+    <div class="sec">
+      <h3 class="sec-h">Propagate me</h3>
+      <div class="row" id="tags"></div>
+      <div class="plate"><div id="svg"></div></div>
+      <ol id="steps"></ol>
+    </div>
+
+    <div class="sec">
+      <h3 class="sec-h">Resale read</h3>
+      <div class="sell">
+        <div id="selltop"></div>
+        <div id="sellnotes" style="margin-top:6px;font-size:14px"></div>
+      </div>
+    </div>
+
     <div class="links" id="links" style="margin-top:14px"></div>
   </article>
 </main>

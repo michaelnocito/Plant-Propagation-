@@ -23,7 +23,7 @@ async def propagate(file: UploadFile):
     except Exception as e:  # noqa: BLE001
         raise HTTPException(502, f"ID failed: {e}") from e
     try:
-        result = await enrich(species, common)
+        result = await enrich(species, common, data, file.content_type)
     except Exception as e:  # noqa: BLE001
         raise HTTPException(502, f"Enrich failed: {e}") from e
     result.confidence = round(score, 2)

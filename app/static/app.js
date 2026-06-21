@@ -44,15 +44,63 @@ function links(species) {
   ];
 }
 
+const esc = (s) =>
+  String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+const DX_TITLE = { healthy: "Looks healthy", watch: "Worth watching", issue: "Needs attention" };
+
+function renderCare(c) {
+  $("soil").innerHTML =
+    `<div class="soilopt"><b>Buy it · all-in-one</b><span>${esc(c.soil_store_bought)}</span></div>` +
+    `<div class="soilopt"><b>Mix it · DIY</b><span>${esc(c.soil_diy)}</span></div>`;
+  const rows = [
+    ["Sunlight", c.sunlight],
+    ["Watering", c.watering],
+    ["Humidity", c.humidity],
+    ["Temp", c.temperature],
+    ["Feeding", c.feeding],
+  ];
+  $("care").innerHTML = rows
+    .filter(([, v]) => v)
+    .map(([k, v]) => `<div class="c"><b>${k}</b><span>${esc(v)}</span></div>`)
+    .join("");
+}
+
+function renderDiagnosis(dx) {
+  const status = ["healthy", "watch", "issue"].includes(dx.status) ? dx.status : "watch";
+  const issues = (dx.issues || [])
+    .map((i) => {
+      const sev = ["low", "medium", "high"].includes(i.severity) ? i.severity : "medium";
+      const remedy = i.home_remedy
+        ? `<div class="lab">Home remedy</div><p>${esc(i.home_remedy)}</p>` : "";
+      const link = i.learn_query
+        ? `<a href="https://www.google.com/search?q=${encodeURIComponent(i.learn_query)}" target="_blank" rel="noopener">How to fix this →</a>` : "";
+      return (
+        `<div class="issue"><div class="issue-h"><b>${esc(i.condition)}</b>` +
+        `<span class="sev ${sev}">${sev}</span></div>` +
+        (i.signs ? `<div class="lab">What I'm seeing</div><p>${esc(i.signs)}</p>` : "") +
+        `<div class="lab">Do this</div><p>${esc(i.action)}</p>` +
+        remedy + link + `</div>`
+      );
+    })
+    .join("");
+  $("dx").className = `dx ${status}`;
+  $("dx").innerHTML =
+    `<div class="dx-top"><span class="dot"></span>${DX_TITLE[status]}</div>` +
+    `<div class="dx-sum">${esc(dx.summary)}</div>` + issues;
+}
+
 function render(d) {
   $("name").textContent = d.common_name;
   $("latin").textContent =
     d.confidence ? `${d.species} · ${Math.round(d.confidence * 100)}% match` : d.species;
   $("score").textContent = d.marketability.score;
+  renderDiagnosis(d.diagnosis);
+  renderCare(d.care);
   $("tags").innerHTML = [d.method, d.difficulty, d.timeline]
-    .map((t) => `<span class="tag">${t}</span>`).join("");
+    .map((t) => `<span class="tag">${esc(t)}</span>`).join("");
   $("svg").innerHTML = d.diagram_svg;
-  $("steps").innerHTML = d.steps.map((s) => `<li>${s}</li>`).join("");
+  $("steps").innerHTML = d.steps.map((s) => `<li>${esc(s)}</li>`).join("");
   const m = d.marketability;
   $("selltop").innerHTML =
     `<span class="price">${m.est_price_range}</span> · ${m.demand} demand · ${m.rarity}`;
