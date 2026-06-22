@@ -12,7 +12,15 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from .claude import appraise_plant, appraise_soil, diagnose_plant, diagram_plant, edible_plant, enrich_core
+from .claude import (
+    appraise_plant,
+    appraise_soil,
+    diagnose_plant,
+    diagram_plant,
+    edible_plant,
+    enrich_core,
+    sync_recipes,
+)
 from .db import MEMBERS, Photo, Plant, Session, SoilPack, User, get_user, init_db
 from .models import (
     CATEGORIES,
@@ -450,6 +458,15 @@ def _soil_out(sp: SoilPack) -> SoilPackOut:
         sold=sp.sold,
         created_at=sp.created_at.isoformat(),
     )
+
+
+@app.post("/recipes/sync")
+async def recipes_sync(body: dict):
+    """Web-grounded check for soil-recipe / best-practice updates -> review proposals."""
+    try:
+        return await sync_recipes(body.get("recipes", ""))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"Sync failed: {e}") from e
 
 
 @app.post("/soil/appraise")

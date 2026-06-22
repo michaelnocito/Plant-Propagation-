@@ -112,8 +112,15 @@ def _media_type(content_type: str | None) -> str:
 
 
 def _parse(msg) -> dict:
-    text = "".join(b.text for b in msg.content if b.type == "text")
-    return json.loads(text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip())
+    text = "".join(b.text for b in msg.content if b.type == "text").strip()
+    text = text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    try:
+        return json.loads(text)
+    except Exception:  # noqa: BLE001 — tolerate surrounding prose/citations (e.g. web search)
+        i, j = text.find("{"), text.rfind("}")
+        if i != -1 and j > i:
+            return json.loads(text[i:j + 1])
+        raise
 
 
 async def enrich_core(species: str, common: str) -> PropResult:
@@ -187,6 +194,40 @@ async def diagnose_plant(species: str, common: str, image: bytes, content_type: 
     ]
     msg = await client.messages.create(
         model=MODEL, max_tokens=1500, messages=[{"role": "user", "content": content}],
+    )
+    return _parse(msg)
+
+
+SYNC_PROMPT = """You maintain a houseplant soil-mix recipe library. Current recipes (name: ratio):
+{recipes}
+
+Search the web for any notable UPDATES, CORRECTIONS, or newly-recommended best practices for these
+mixes from REPUTABLE horticulture sources (university extension, RHS, botanical gardens, respected
+specialists) in roughly the last 1-2 years. Focus on substantive, well-sourced changes — ratio tweaks,
+ingredient swaps (e.g. peat -> coir for sustainability), safety notes — not trivia or marketing.
+
+Return ONLY a JSON object (no markdown):
+{{
+  "summary": "one line: is the library current? (e.g. 'Mostly current; 2 minor suggestions.')",
+  "proposals": [
+    {{
+      "recipe": "which recipe it affects (or 'New recipe' / 'General')",
+      "change": "the specific proposed update, concise",
+      "why": "the reasoning",
+      "source": "source name + URL"
+    }}
+  ]
+}}
+If everything is current and well-founded, return an empty "proposals" list and say so. Output JSON only."""
+
+
+async def sync_recipes(recipes_summary: str) -> dict:
+    """Web-grounded check for recipe/best-practice updates -> review proposals (never auto-applied)."""
+    msg = await client.messages.create(
+        model=MODEL,
+        max_tokens=2200,
+        tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 5}],
+        messages=[{"role": "user", "content": SYNC_PROMPT.format(recipes=recipes_summary or "(none provided)")}],
     )
     return _parse(msg)
 

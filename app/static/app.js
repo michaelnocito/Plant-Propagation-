@@ -997,6 +997,48 @@ const GUIDES = [
   ] },
 ];
 
+// canonical components for the "what do you have?" grid
+const COMPONENTS = [
+  ["perlite", "Perlite"], ["pumice", "Pumice"], ["bark", "Orchid bark"], ["coir", "Coco coir"],
+  ["peat", "Peat moss"], ["vermiculite", "Vermiculite"], ["charcoal", "Charcoal"], ["castings", "Worm castings"],
+  ["sand", "Coarse sand"], ["compost", "Compost"], ["sphagnum", "Sphagnum"], ["potting", "Potting soil"],
+];
+// map a recipe ingredient name -> the canonical components that can satisfy it
+function ingredientComponents(name) {
+  const s = String(name || "").toLowerCase();
+  const hits = [];
+  if (s.includes("perlite")) hits.push("perlite");
+  if (s.includes("pumice")) hits.push("pumice");
+  if (s.includes("bark")) hits.push("bark");
+  if (s.includes("coir")) hits.push("coir");
+  if (s.includes("peat")) hits.push("peat");
+  if (s.includes("vermiculite")) hits.push("vermiculite");
+  if (s.includes("charcoal")) hits.push("charcoal");
+  if (s.includes("casting")) hits.push("castings");
+  if (s.includes("sand")) hits.push("sand");
+  if (s.includes("compost")) hits.push("compost");
+  if (s.includes("sphagnum") || s.includes("moss")) hits.push("sphagnum");
+  if (s.includes("potting")) hits.push("potting");
+  return [...new Set(hits)];
+}
+// hand-authored soil substitutions: component -> {sub, note, clean (1:1) | not}
+const SUBS = {
+  perlite: { sub: "pumice", note: "Same drainage — pumice is heavier and won't float to the top.", clean: true },
+  pumice: { sub: "perlite", note: "Same drainage — perlite is lighter and may float up over time.", clean: true },
+  peat: { sub: "coir", note: "Coir is the renewable swap, ~1:1 for moisture.", clean: true },
+  coir: { sub: "peat", note: "Both hold water; peat is acidic — add a pinch of lime.", clean: true },
+  vermiculite: { sub: "perlite", note: "⚠ Perlite DRAINS where vermiculite HOLDS water — the mix runs drier.", clean: false },
+  bark: { sub: "pumice", note: "Keeps it chunky & airy, but loses bark's big root pockets.", clean: false },
+  sand: { sub: "pumice", note: "Both add grit/drainage; pumice holds a touch more water.", clean: false },
+  castings: { sub: "compost", note: "Both feed gently; compost is coarser — use a bit less.", clean: false },
+  sphagnum: { sub: "coir", note: "Both hold moisture; coir is finer and re-wets easier.", clean: false },
+  compost: { sub: "castings", note: "Richer per scoop — use less.", clean: false },
+  potting: { sub: "coir", note: "Coir + a little compost approximates basic potting soil.", clean: false },
+  charcoal: { sub: "", note: "Optional — safe to leave out.", clean: true },
+};
+
+let pantry = {}; // component key -> "have" | "exclude" (absent = don't have)
+
 let soilView = "recipes";
 let soilPacks = [];
 let currentSoil = null;
@@ -1088,31 +1130,114 @@ function calcProfit() {
     `<div class="calc-margin">${revenue > 0 ? margin + "% margin" : "&nbsp;"}</div>`;
 }
 
+// per-ingredient status against the current pantry
+function ingredientStatus(name) {
+  const comps = ingredientComponents(name);
+  if (!comps.length) return { state: "have" }; // generic (e.g. potting soil) — assume on hand
+  if (comps.some((c) => pantry[c] === "have")) return { state: "have" };
+  // need a swap: a candidate that's missing/excluded -> use its sub if you HAVE that sub
+  for (const c of comps) {
+    const s = SUBS[c];
+    if (s && s.sub && pantry[s.sub] === "have") return { state: "swap", from: c, to: s.sub, note: s.note, clean: s.clean };
+  }
+  const c0 = comps[0], s0 = SUBS[c0] || {};
+  return { state: "missing", from: c0, to: s0.sub, note: s0.note, clean: s0.clean };
+}
+function recipeMatch(r) {
+  const items = r.ingredients.map((i) => ({ i, st: ingredientStatus(i.name) }));
+  return { items, missing: items.filter((x) => x.st.state === "missing").length, swaps: items.filter((x) => x.st.state === "swap").length };
+}
+const compName = (k) => (COMPONENTS.find((c) => c[0] === k) || [k, k])[1];
+
 function renderRecipes() {
   const box = $("soil-recipes");
-  const guides = GUIDES.map(
-    (g) => `<div class="recipe" data-key="g-${g.key}">
+  const active = Object.keys(pantry).length > 0;
+  // sync bar
+  const synced = localStorage.getItem("rootwork_recipe_sync");
+  const syncWhen = synced ? `Checked ${timeAgo(+synced)}` : "Never checked";
+  const sync = `<div class="syncbar"><button class="exportbtn" id="syncBtn">↻ Sync recipes</button><span class="syncwhen">${syncWhen}</span></div>
+    <div id="syncOut"></div>`;
+  // "what do you have?" pantry grid (tri-state: have / exclude / none)
+  const chips = COMPONENTS.map(([k, l]) => {
+    const st = pantry[k] || "";
+    return `<button class="pchip ${st}" data-comp="${k}">${st === "have" ? "✓ " : st === "exclude" ? "⊘ " : ""}${esc(l)}</button>`;
+  }).join("");
+  const pantryUI = `<div class="rsub" style="margin:16px 0 6px">What do you have? <span style="text-transform:none;letter-spacing:0;color:var(--sepia)">— tap: have → exclude → off</span></div>
+    <div class="pantry">${chips}</div>${active ? `<button class="link" id="pantryClear" style="margin-top:8px">Clear</button>` : ""}`;
+  // guides
+  const guides = GUIDES.map((g) => `<div class="recipe" data-key="g-${g.key}">
       <div class="recipe-h"><div class="rn">${esc(g.name)}</div><span class="chev">▾</span></div>
       <div class="recipe-body">${g.lines.map((l) => `<div class="rtip" style="margin-top:8px">${esc(l)}</div>`).join("")}</div>
-    </div>`
-  ).join("");
-  const recipes = RECIPES.map((r) => {
-    const ings = r.ingredients.map((i) => `<div class="ing"><span>${esc(i.name)}</span><b>${esc(i.parts)}</b></div>`).join("");
-    const suits = r.suits.map((s) => `<span>${esc(s)}</span>`).join("");
-    return `<div class="recipe" data-key="${r.key}">
-      <div class="recipe-h"><div><div class="rn">${esc(r.name)}</div><div class="rmeta">${esc(r.ratio)}</div></div><span class="chev">▾</span></div>
+    </div>`).join("");
+  // recipes (re-ranked + substitutions when pantry active)
+  let list = RECIPES.map((r) => ({ r, m: active ? recipeMatch(r) : null }));
+  if (active) list.sort((a, b) => a.m.missing - b.m.missing);
+  const recipes = list.map(({ r, m }) => {
+    const ings = (m ? m.items : r.ingredients.map((i) => ({ i, st: { state: "plain" } }))).map(({ i, st }) => {
+      let label = esc(i.name);
+      if (st.state === "swap") label = `<s>${esc(compName(st.from))}</s> → <b>${esc(compName(st.to))}</b> <span class="subbadge ${st.clean ? "clean" : "chg"}">SUB · ${st.clean ? "same job" : "changes feel"}</span>`;
+      else if (st.state === "missing") label = `${esc(i.name)} <span class="miss">missing</span>${st.to ? ` <span class="subhint">or ${esc(compName(st.to))}</span>` : ""}`;
+      return `<div class="ing"><span>${label}</span><b>${esc(i.parts)}</b></div>`;
+    }).join("");
+    const badge = m
+      ? (m.missing === 0 ? `<span class="rstatus ready">Ready${m.swaps ? " · w/ subs" : ""}</span>` : `<span class="rstatus miss">Missing ${m.missing}</span>`)
+      : `<span class="rmeta">${esc(r.ratio)}</span>`;
+    const subNotes = m ? m.items.filter((x) => x.st.note && (x.st.state === "swap" || x.st.state === "missing")).map((x) => `<div class="rtip" style="margin-top:4px">↳ ${esc(compName(x.st.from))}: ${esc(x.st.note)}</div>`).join("") : "";
+    return `<div class="recipe${m && m.missing === 0 ? " ok" : ""}" data-key="${r.key}">
+      <div class="recipe-h"><div><div class="rn">${esc(r.name)}</div>${badge}</div><span class="chev">▾</span></div>
       <div class="recipe-body">
-        <div class="rsub">Mix (parts by volume)</div>${ings}
-        <div class="rsub">Good for</div><div class="suits">${suits}</div>
+        <div class="rsub">Mix (parts by volume)</div>${ings}${subNotes}
+        <div class="rsub">Good for</div><div class="suits">${r.suits.map((s) => `<span>${esc(s)}</span>`).join("")}</div>
         <div class="rsub">How</div><div class="rtip">${esc(r.method)}</div>
         <div class="rsub">Storage</div><div class="rtip">${esc(r.storage)}</div>
         <div class="rsub">Buy in bulk</div><div class="rtip">${esc(r.bulk)}</div>
         <button class="makebtn" data-make="${r.key}">＋ Make a batch from this</button>
       </div></div>`;
   }).join("");
-  box.innerHTML = `<div class="rsub" style="margin:4px 0 8px">Maker's guide</div>${guides}<div class="rsub" style="margin:16px 0 8px">Recipes — pick the right blend per plant</div>${recipes}`;
+  box.innerHTML = sync + pantryUI +
+    `<div class="rsub" style="margin:18px 0 8px">Maker's guide</div>${guides}` +
+    `<div class="rsub" style="margin:18px 0 8px">${active ? "Recipes — ranked by what you have" : "Recipes — pick the right blend per plant"}</div>${recipes}`;
+  $("syncBtn").onclick = runRecipeSync;
+  if ($("pantryClear")) $("pantryClear").onclick = () => { pantry = {}; renderRecipes(); };
+  box.querySelectorAll("[data-comp]").forEach((b) => (b.onclick = () => cyclePantry(b.dataset.comp)));
   box.querySelectorAll(".recipe-h").forEach((h) => (h.onclick = () => h.parentElement.classList.toggle("open")));
   box.querySelectorAll("[data-make]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); makePack(b.dataset.make); }));
+}
+function cyclePantry(k) {
+  pantry[k] = pantry[k] === "have" ? "exclude" : pantry[k] === "exclude" ? undefined : "have";
+  if (!pantry[k]) delete pantry[k];
+  renderRecipes();
+}
+function timeAgo(ts) {
+  const m = Math.floor((Date.now() - ts) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} hr ago`;
+  return `${Math.floor(h / 24)} day(s) ago`;
+}
+
+async function runRecipeSync() {
+  const btn = $("syncBtn"), out = $("syncOut");
+  btn.disabled = true; btn.textContent = "↻ Checking the web…";
+  out.innerHTML = "";
+  try {
+    const summary = RECIPES.map((r) => `${r.name}: ${r.ratio}`).join("; ");
+    const r = await fetch("/recipes/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recipes: summary }) });
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    localStorage.setItem("rootwork_recipe_sync", String(Date.now()));
+    const props = (d.proposals || []).map((p) => `<div class="prop">
+      <div class="prop-h">${esc(p.recipe || "General")}</div>
+      <div class="prop-c">${esc(p.change || "")}</div>
+      ${p.why ? `<div class="prop-w">${esc(p.why)}</div>` : ""}
+      ${p.source ? `<div class="prop-s">${esc(p.source)}</div>` : ""}
+    </div>`).join("");
+    out.innerHTML = `<div class="syncres"><div class="syncsum">${esc(d.summary || "Checked.")}</div>${props || `<div class="rtip">No changes suggested — your recipes look current. 🌿</div>`}<div class="rtip" style="margin-top:8px;color:var(--sepia)">Suggestions only — review before changing anything.</div></div>`;
+  } catch (e) {
+    out.innerHTML = `<div class="rtip" style="color:var(--danger-d)">Couldn't reach the web to sync right now — try again later.</div>`;
+  }
+  btn.disabled = false; btn.textContent = "↻ Sync recipes";
 }
 
 async function postSoil(body) {

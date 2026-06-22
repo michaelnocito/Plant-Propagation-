@@ -518,6 +518,32 @@
   .roi .rprof{text-align:right; flex:none}
   .roi .rprof > div:first-child{font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:var(--sepia2)}
   .roi .rp{font-family:Georgia,serif; font-size:15px; color:var(--inkg)}
+  /* soil lab — sync + pantry + substitutions */
+  .syncbar{display:flex; align-items:center; gap:10px; margin-bottom:4px}
+  .syncwhen{font-size:12px; color:var(--sepia)}
+  .syncres{background:var(--paper2); border:1px solid var(--rule); border-radius:11px; padding:12px 13px; margin-top:10px}
+  .syncsum{font-size:14px; font-weight:600; color:var(--inkg); margin-bottom:8px}
+  .prop{border-top:1px solid var(--rule-soft); padding:9px 0}
+  .prop:first-of-type{border-top:none}
+  .prop-h{font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:var(--blue-d); font-weight:700}
+  .prop-c{font-size:13.5px; color:var(--inkg); margin-top:2px; line-height:1.4}
+  .prop-w{font-size:12.5px; color:var(--inkg2); margin-top:3px; line-height:1.4}
+  .prop-s{font-size:11.5px; color:var(--sepia); margin-top:3px; word-break:break-word}
+  .pantry{display:flex; flex-wrap:wrap; gap:7px}
+  .pchip{border:1px solid var(--rule); background:var(--card); color:var(--inkg2); border-radius:999px;
+    padding:7px 11px; font-size:12.5px; cursor:pointer}
+  .pchip.have{background:#dde6c8; border-color:#a9c992; color:#41522f; font-weight:600}
+  .pchip.exclude{background:var(--paper2); border-color:var(--rule); color:var(--sepia); text-decoration:line-through}
+  .rstatus{font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; border-radius:999px; padding:2px 8px; margin-top:3px; display:inline-block}
+  .rstatus.ready{background:#dde6c8; color:#41522f}
+  .rstatus.miss{background:#efe0c0; color:#866418}
+  .recipe.ok{border-color:#b8c79c}
+  .subbadge{font-size:9.5px; text-transform:uppercase; letter-spacing:.3px; border-radius:999px; padding:1px 6px; white-space:nowrap}
+  .subbadge.clean{background:#dde6c8; color:#41522f}
+  .subbadge.chg{background:#efe0c0; color:#866418}
+  .ing s{color:var(--sepia)}
+  .miss{font-size:11px; color:var(--danger-d); font-style:italic}
+  .subhint{font-size:11px; color:var(--blue-d)}
   /* soil lab */
   .recipe{background:var(--card); border:1px solid var(--rule); border-radius:10px; margin-bottom:10px; overflow:hidden; box-shadow:var(--sheet)}
   .recipe-h{padding:13px 14px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:10px}
