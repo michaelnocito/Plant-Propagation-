@@ -374,11 +374,11 @@ function drawCollection(view, rows) {
 
   const shown = rows.filter((r) => filterState[view] === "all" || r.category === filterState[view]);
   if (!shown.length) {
-    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">${
+    grid.innerHTML = emptyState(
       view === "mine"
         ? "No saved plants yet.<br>Identify a plant and tap <b>Save</b>."
         : "Nothing shared yet.<br>Save a plant as <b>Family</b> to add it here."
-    }</div>`;
+    );
     return;
   }
   grid.innerHTML = shown.map(pcard).join("");
@@ -450,7 +450,7 @@ function drawMarket() {
   if (tog) tog.onclick = () => { showSold = !showSold; drawMarket(); };
 
   if (!marketRows.length) {
-    list.innerHTML = `<div class="empty">Nothing listed yet.<br>Open a plant and tap <b>List on Marketplace</b> (or use <b>Save &amp; list</b> when saving).</div>`;
+    list.innerHTML = emptyState("Nothing listed yet.<br>Open a plant and tap <b>List on Marketplace</b> (or use <b>Save &amp; list</b> when saving).");
     return;
   }
 
@@ -506,6 +506,9 @@ function mrow(p, x) {
 
 /* ---------- result rendering (care / diagnosis / propagation / resale) ---------- */
 const DX_TITLE = { healthy: "Looks healthy", watch: "Worth watching", issue: "Needs attention" };
+const EMPTY_ART =
+  `<svg viewBox="0 0 48 48" fill="none" stroke="#7fa07a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M24 43V21"/><path d="M24 27c-7.5 0-12.5-4.5-13-12.5 8 .5 13 4.5 13 12.5z"/><path d="M24 23c6.5 0 11-3.5 11.5-10.5-7 .5-11.5 3.5-11.5 10.5z"/></svg>`;
+const emptyState = (msg) => `<div class="empty" style="grid-column:1/-1">${EMPTY_ART}${msg}</div>`;
 
 /* light & temperature as min→thrives→max ranges (used by BOTH summary and detail) */
 const hasLight = (c) => !!(c && c.light && typeof c.light === "object");

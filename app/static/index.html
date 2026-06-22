@@ -16,6 +16,15 @@
   :root{
     --ink:#0f1c14; --ink2:#16271b; --parch:#efe7d4; --parch2:#e3d8bf;
     --sage:#7fa07a; --copper:#c0703a; --line:#2c4231; --muted:#9fb39c;
+    /* design refresh tokens */
+    --gold:#e0b15a; --gold-deep:#caa047;        /* honey — monetary/hero numbers */
+    --hair:rgba(255,255,255,.06);                /* top highlight on dark surfaces */
+    --card-grad:linear-gradient(180deg,#f4ede1 0%,#e8dec8 100%);
+    --darkcard:linear-gradient(165deg,#1b3324,#122017);
+    --ink-grad:radial-gradient(125% 85% at 50% -10%, #17301f 0%, #0e1a12 55%, #0a140d 100%);
+    --shadow:0 16px 38px -14px rgba(0,0,0,.55);
+    --shadow-sm:0 6px 16px -8px rgba(0,0,0,.5);
+    --r:14px; --r-lg:20px;
   }
   *{box-sizing:border-box}
   body{
@@ -285,6 +294,100 @@
   .who-card span{font-size:17px; font-weight:600}
   @media (prefers-reduced-motion:no-preference){.card{animation:rise .35s ease}}
   @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  /* ============================================================
+     DESIGN REFRESH — "botanical journal, after dark"
+     (layered over the base styles; later rules win)
+     ============================================================ */
+  body{background:var(--ink-grad) no-repeat; background-attachment:scroll; min-height:100vh}
+  h1{font-size:30px; letter-spacing:.3px}
+  header p{letter-spacing:.2px}
+  .chip{box-shadow:0 3px 10px rgba(0,0,0,.3); border:2px solid rgba(255,255,255,.3)}
+
+  /* motion */
+  button,.seg button,.modeToggle button,.filters button,nav.tabs button,.mrow,.pcard,.who-card,.gphoto{
+    transition:background .2s ease,color .2s ease,border-color .2s ease,box-shadow .2s ease,transform .12s ease}
+  button:active,.mrow:active,.pcard:active,.who-card:active,.gphoto:active{transform:scale(.975)}
+  .view.on{animation:fade .28s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+  /* cards & section headers */
+  .card{background:var(--card-grad); border:1px solid rgba(120,90,50,.18);
+    border-radius:var(--r-lg); box-shadow:var(--shadow)}
+  .card h2{font-size:24px; letter-spacing:.2px}
+  .sec-h{border-bottom:none; position:relative; padding-bottom:9px; font-size:16px; letter-spacing:.3px}
+  .sec-h::after{content:""; position:absolute; left:0; bottom:0; width:100%; height:1px;
+    background:linear-gradient(90deg,rgba(120,90,50,.5),rgba(120,90,50,0))}
+  .vh{font-size:23px; letter-spacing:.3px}
+
+  /* summary tiles + value banner (hero the money in honey-gold) */
+  .stile{background:linear-gradient(180deg,#e7dcc4,#e0d4ba); border:1px solid rgba(120,90,50,.14)}
+  .stile .sk{color:#6f5f44}
+  .svalue .sv-item{background:var(--darkcard); border:1px solid var(--hair);
+    box-shadow:var(--shadow-sm); position:relative; overflow:hidden}
+  .svalue .sv-item::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--gold)}
+  .svalue .sv-k{color:var(--sage); letter-spacing:.6px}
+  .svalue .sv-p{color:var(--gold); font-family:Georgia,serif; font-size:18px; letter-spacing:.2px}
+
+  /* signature range bars */
+  .rb-track{height:12px; background:linear-gradient(90deg,#7fa8cf,#e6d49a 50%,#dd9a63);
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.22)}
+  .rb-band{height:18px; top:-3px; background:linear-gradient(180deg,#5bb04a,#3f8a33);
+    box-shadow:0 0 0 2px var(--parch),0 2px 7px rgba(63,138,51,.5)}
+  .lz-cell{background:linear-gradient(180deg,#e7dcc4,#e0d4ba); border:1px solid rgba(120,90,50,.14)}
+  .lz-cell.on{background:linear-gradient(180deg,#e2f0d7,#cfe6bf); border:1px solid #a9cf93;
+    box-shadow:0 0 0 1px rgba(79,123,58,.22), var(--shadow-sm)}
+  .lz-cell.on b{color:#3f7a2f}
+  .lz-cell.on b::before{content:"★ "; color:#5aa03f}
+
+  /* marketplace cockpit + sell-score "coin" */
+  .mstats{gap:10px}
+  .mstat{background:var(--darkcard); border:1px solid var(--hair); box-shadow:var(--shadow-sm);
+    padding:13px 8px; position:relative; overflow:hidden}
+  .mstat::before{content:""; position:absolute; top:0; left:0; right:0; height:2px;
+    background:linear-gradient(90deg,var(--gold),transparent)}
+  .mstat .mn{color:var(--gold); font-size:20px}
+  .mrow{background:var(--darkcard); border:1px solid var(--hair); border-radius:16px;
+    box-shadow:var(--shadow-sm); padding:12px 13px}
+  .mrow .mph{border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.35)}
+  .mrow .opp{display:grid; place-items:center; gap:3px}
+  .mrow .opp .on{color:#0e1a12; font-size:17px; width:46px; height:46px; border-radius:50%;
+    display:grid; place-items:center;
+    background:radial-gradient(circle at 35% 30%,#f1d28a,var(--gold-deep));
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.32),0 3px 8px rgba(0,0,0,.35)}
+
+  /* filter / sort chips */
+  .filters button{background:rgba(20,33,24,.7)}
+  .filters button.on{background:var(--sage); color:#0e1a12; border-color:var(--sage);
+    box-shadow:0 2px 8px rgba(127,160,122,.35)}
+
+  /* plant grid cards */
+  .pcard{background:linear-gradient(180deg,#17291c,#101b13); border:1px solid var(--hair);
+    box-shadow:var(--shadow-sm); border-radius:16px}
+
+  /* primary buttons + toggles */
+  .savebtn{box-shadow:0 8px 18px -8px rgba(192,112,58,.65); letter-spacing:.2px}
+  .modeToggle{background:#e3d8bf; box-shadow:inset 0 1px 2px rgba(0,0,0,.07)}
+  .modeToggle button.on{box-shadow:0 2px 6px rgba(0,0,0,.25)}
+  .seal{box-shadow:inset 0 0 0 3px rgba(255,255,255,.3),0 6px 16px rgba(0,0,0,.3)}
+
+  /* bottom tab bar — active indicator */
+  nav.tabs{background:#0c160f; border-top:1px solid var(--hair); backdrop-filter:none; -webkit-backdrop-filter:none}
+  nav.tabs button{position:relative; padding-top:11px; letter-spacing:.2px}
+  nav.tabs button svg{stroke-width:1.7}
+  nav.tabs button.on svg{transform:translateY(-1px) scale(1.06)}
+  nav.tabs button.on::before{content:""; position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:22px; height:3px; border-radius:0 0 4px 4px; background:var(--sage)}
+
+  /* picker */
+  .picker{background:var(--ink-grad)}
+  .who-card{background:var(--darkcard); border:1px solid var(--hair); box-shadow:var(--shadow)}
+  .who-card .av{box-shadow:0 4px 14px rgba(0,0,0,.35)}
+
+  /* friendlier empty states */
+  .empty svg{width:52px; height:52px; opacity:.55; display:block; margin:0 auto 10px}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important}}
 </style>
 </head>
 <body>
