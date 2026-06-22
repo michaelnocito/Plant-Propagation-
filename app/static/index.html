@@ -175,6 +175,36 @@
   .pcard .mkt{font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:#e2b07a;
     border:1px solid #6a5230; border-radius:999px; padding:2px 7px}
   .vh{font-family:"Iowan Old Style",Georgia,serif; font-size:22px; margin:6px 0 4px}
+  .vhrow{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .exportbtn{flex:none; background:var(--ink2); border:1px solid var(--line); color:var(--sage);
+    border-radius:999px; padding:7px 12px; font-size:12.5px; cursor:pointer}
+  /* photo gallery (in plant detail) */
+  .gal{display:flex; gap:9px; flex-wrap:wrap}
+  .gal .gphoto{position:relative; width:84px; height:84px; border-radius:11px; overflow:hidden;
+    background:#fff; border:1px solid #ddd2b6; cursor:pointer}
+  .gal .gphoto img{width:100%; height:100%; object-fit:cover; display:block}
+  .gal .gphoto .cv{position:absolute; top:3px; left:3px; background:var(--copper); color:#fff;
+    font-size:8px; text-transform:uppercase; letter-spacing:.3px; border-radius:999px; padding:1px 6px}
+  .gal .gadd{width:84px; height:84px; border-radius:11px; border:1px dashed var(--line);
+    background:var(--parch2); color:#7a6a4f; display:grid; place-items:center; font-size:13px;
+    text-align:center; line-height:1.2; cursor:pointer}
+  .gal .gadd span{font-size:22px; display:block}
+  .galtools{margin-top:10px; font-size:13px}
+  .galtools a{color:var(--copper); border-bottom:1.5px solid var(--copper); text-decoration:none}
+  .galempty{color:#8a7a64; font-size:13.5px}
+  /* lightbox */
+  .lightbox{position:fixed; inset:0; z-index:60; background:rgba(8,14,10,.94); display:none;
+    flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px;
+    padding-top:calc(env(safe-area-inset-top) + 24px)}
+  .lightbox.on{display:flex}
+  .lb-img{max-width:100%; max-height:62vh; border-radius:12px; object-fit:contain}
+  .lb-close{position:absolute; top:calc(env(safe-area-inset-top) + 12px); right:16px; width:40px; height:40px;
+    border-radius:50%; border:none; background:rgba(255,255,255,.15); color:#fff; font-size:18px; cursor:pointer}
+  .lb-caption{color:var(--parch); font-size:14px; text-align:center; max-width:560px; min-height:18px}
+  .lb-actions{display:flex; gap:10px; flex-wrap:wrap; justify-content:center}
+  .lb-actions button,.lb-actions a{border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.08);
+    color:var(--parch); border-radius:999px; padding:9px 14px; font-size:13.5px; cursor:pointer; text-decoration:none}
+  .lb-actions .danger{color:#e89a78; border-color:#7a4632}
   .mkt-sub{color:var(--muted); font-size:13px; margin:0 0 12px; line-height:1.4}
   /* resale: two ratings (cuttings + whole plant) in the detail card */
   .resale2{display:grid; gap:10px}
@@ -293,6 +323,11 @@
 
       <!-- DETAIL (full) -->
       <div id="detailBody">
+        <div class="sec" id="photos-sec">
+          <h3 class="sec-h">Photos</h3>
+          <div id="photos"></div>
+        </div>
+
         <div class="sec">
           <h3 class="sec-h">Plant check-up</h3>
           <div id="dx"></div>
@@ -322,14 +357,14 @@
 
   <!-- MY PLANTS -->
   <section id="view-mine" class="view">
-    <h2 class="vh">My plants</h2>
+    <div class="vhrow"><h2 class="vh">My plants</h2><button class="exportbtn" data-export="mine">⤓ Export photos</button></div>
     <div id="mine-filters" class="filters"></div>
     <div id="mine-grid" class="grid"></div>
   </section>
 
   <!-- FAMILY -->
   <section id="view-family" class="view">
-    <h2 class="vh">Family garden</h2>
+    <div class="vhrow"><h2 class="vh">Family garden</h2><button class="exportbtn" data-export="family">⤓ Export photos</button></div>
     <div id="family-filters" class="filters"></div>
     <div id="family-grid" class="grid"></div>
   </section>
@@ -367,6 +402,17 @@
   <h2>Who's gardening?</h2>
   <p>Pick yourself — no password. You can switch anytime.</p>
   <div id="who-cards" class="who-cards"></div>
+</div>
+
+<!-- hidden input for adding gallery photos (camera OR library) -->
+<input type="file" id="galleryInput" accept="image/*" multiple style="display:none" />
+
+<!-- photo lightbox -->
+<div id="lightbox" class="lightbox">
+  <button class="lb-close" id="lbClose" aria-label="close">✕</button>
+  <img id="lbImg" class="lb-img" alt="" />
+  <div id="lbCaption" class="lb-caption"></div>
+  <div id="lbActions" class="lb-actions"></div>
 </div>
 
 <script src="/app.js"></script>

@@ -7,7 +7,7 @@ from datetime import datetime
 
 from sqlalchemy import ForeignKey, String, Text, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, selectinload
 
 def _resolve_db_path() -> str:
     """Use $DB_PATH (the persistent disk in prod). If its directory isn't writable
@@ -67,6 +67,22 @@ class Plant(Base):
     props_in_progress: Mapped[int] = mapped_column(default=0)  # cuttings currently rooting
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     owner: Mapped[User] = relationship(back_populates="plants")
+    photos: Mapped[list["Photo"]] = relationship(
+        back_populates="plant", cascade="all, delete-orphan"
+    )
+
+
+class Photo(Base):
+    __tablename__ = "photos"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    plant_id: Mapped[int] = mapped_column(ForeignKey("plants.id"), index=True)
+    data: Mapped[str] = mapped_column(Text)  # full-ish JPEG data URI (~1024px) — the backup-quality copy
+    thumb: Mapped[str] = mapped_column(Text, default="")  # small data URI (~160px) for grids/gallery
+    caption: Mapped[str] = mapped_column(String(200), default="")
+    is_cover: Mapped[bool] = mapped_column(default=False)
+    uploaded_by: Mapped[str] = mapped_column(String(32), default="")
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+    plant: Mapped[Plant] = relationship(back_populates="photos")
 
 
 async def _ensure_columns(conn) -> None:
@@ -92,6 +108,19 @@ async def init_db() -> None:
         for m in MEMBERS:
             if m["slug"] not in existing:
                 s.add(User(**m))
+        await s.commit()
+        # backfill: turn a legacy single thumbnail into a cover Photo so nothing is lost
+        plants = (
+            await s.execute(select(Plant).options(selectinload(Plant.photos), selectinload(Plant.owner)))
+        ).scalars().all()
+        for p in plants:
+            if p.thumbnail and not p.photos:
+                s.add(
+                    Photo(
+                        plant_id=p.id, data=p.thumbnail, thumb=p.thumbnail,
+                        is_cover=True, uploaded_by=p.owner.slug,
+                    )
+                )
         await s.commit()
 
 

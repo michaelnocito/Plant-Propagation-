@@ -111,6 +111,27 @@ class PlantPatch(BaseModel):
     thumbnail: str | None = None  # replace / clear the photo
 
 
+class PhotoIn(BaseModel):
+    data: str  # full-ish JPEG data URI (~1024px)
+    thumb: str = ""  # small data URI (~160px)
+    caption: str = ""
+
+
+class PhotoPatch(BaseModel):
+    caption: str | None = None
+    is_cover: bool | None = None
+
+
+class PhotoOut(BaseModel):
+    id: int
+    plant_id: int
+    thumb: str  # small; full data fetched via /photos/{id}/full
+    caption: str
+    is_cover: bool
+    uploaded_by: str
+    created_at: str
+
+
 class PlantOut(BaseModel):
     id: int
     owner: str  # slug

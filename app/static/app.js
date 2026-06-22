@@ -16,6 +16,7 @@ let activeTab = "identify";
 let currentResult = null;   // the PropResult being shown
 let currentSaved = null;    // PlantOut if this result is a saved plant, else null
 let lastThumb = "";         // small base64 thumb of the just-taken photo
+let lastPhotoData = "";     // ~1024px data URI of the just-taken photo (seeds the gallery on save)
 let mineRows = [], familyRows = [];
 const filterState = { mine: "all", family: "all" };
 
@@ -65,6 +66,7 @@ pick.addEventListener("change", async (e) => {
   status.textContent = "Reading photo…";
   const blob = await compress(file);
   lastThumb = await thumbDataURL(file);
+  lastPhotoData = await blobToDataURL(blob);
   $("thumb").src = URL.createObjectURL(blob);
   $("thumb").style.display = "block";
   status.textContent = "Identifying & assessing…";
@@ -99,6 +101,13 @@ async function thumbDataURL(file) {
   c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
   return c.toDataURL("image/jpeg", 0.7);
 }
+function blobToDataURL(blob) {
+  return new Promise((res) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.readAsDataURL(blob);
+  });
+}
 
 /* ---------- result + save bar ---------- */
 function showResult(d, saved, thumb) {
@@ -112,6 +121,7 @@ function showResult(d, saved, thumb) {
     $("thumb").style.display = "none";
   }
   renderSavebar();
+  renderPhotos();
   showTab("identify");
   card.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -157,12 +167,7 @@ function renderSavebar() {
       <div class="mline2">
         <button class="mgbtn ${p.sold ? "on" : ""}" id="soldBtn">${p.sold ? "↩ Mark available" : "✓ Mark as sold"}</button>
       </div>
-      <div class="mline2">
-        <button class="link" id="photoBtn">${p.thumbnail ? "Change photo" : "Add photo"}</button>
-        ${p.thumbnail ? `<button class="link" id="rmPhotoBtn">Remove photo</button>` : ""}
-      </div>
     </div>
-    <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" />
     <button class="delbtn" id="delBtn">Remove from my plants</button>
   </div>`;
   $("visSeg").querySelectorAll("button").forEach((b) => (b.onclick = () => patch({ visibility: b.dataset.v })));
@@ -172,9 +177,6 @@ function renderSavebar() {
   $("soldBtn").onclick = () => patch({ sold: !currentSaved.sold });
   $("propMinus").onclick = () => stepProps(-1);
   $("propPlus").onclick = () => stepProps(1);
-  $("photoBtn").onclick = () => $("photoInput").click();
-  $("photoInput").onchange = onPhotoPick;
-  if ($("rmPhotoBtn")) $("rmPhotoBtn").onclick = () => patch({ thumbnail: "" });
   $("delBtn").onclick = doDelete;
 }
 
@@ -201,7 +203,18 @@ async function doSave(inMarket) {
     });
     if (!r.ok) throw new Error();
     currentSaved = await r.json();
+    // seed the gallery with the photo just identified
+    if (lastPhotoData) {
+      try {
+        await fetch(`/plants/${currentSaved.id}/photos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-User": me },
+          body: JSON.stringify({ data: lastPhotoData, thumb: lastThumb || lastPhotoData, caption: "" }),
+        });
+      } catch (e) { /* non-fatal */ }
+    }
     renderSavebar();
+    renderPhotos();
   } catch (e) {
     btns.forEach((b) => (b.disabled = false));
     if (btn) btn.textContent = "Save failed — tap to retry";
@@ -228,13 +241,97 @@ async function stepProps(delta) {
   await patch({ props_in_progress: n }, false);
 }
 
-async function onPhotoPick(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const thumb = await thumbDataURL(file);
-  await patch({ thumbnail: thumb });
-  $("thumb").src = thumb;
-  $("thumb").style.display = "block";
+/* ---------- photo gallery ---------- */
+async function renderPhotos() {
+  const sec = $("photos-sec"), box = $("photos");
+  if (!currentSaved) {
+    sec.style.display = "none";
+    return;
+  }
+  sec.style.display = "block";
+  const mine = currentSaved.owner === me;
+  let photos = [];
+  try {
+    photos = await (await fetch(`/plants/${currentSaved.id}/photos`)).json();
+  } catch (e) { /* empty */ }
+  const tiles = photos
+    .map(
+      (ph) => `<div class="gphoto" data-id="${ph.id}">
+        <img src="${ph.thumb}" alt="${esc(ph.caption)}">
+        ${ph.is_cover ? `<span class="cv">Cover</span>` : ""}
+      </div>`
+    )
+    .join("");
+  const add = mine ? `<div class="gadd" id="galAdd"><div><span>＋</span>Add photo</div></div>` : "";
+  let html = `<div class="gal">${tiles}${add}</div>`;
+  if (!photos.length && !mine) html += `<div class="galempty">No photos yet.</div>`;
+  if (photos.length) {
+    const q = mine ? `scope=plant&id=${currentSaved.id}` : `scope=plant&id=${currentSaved.id}`;
+    html += `<div class="galtools"><a href="/export?${q}">⤓ Download all (${photos.length}) as zip</a></div>`;
+  }
+  box.innerHTML = html;
+  box._photos = photos;
+  if ($("galAdd")) $("galAdd").onclick = () => $("galleryInput").click();
+  box.querySelectorAll(".gphoto").forEach((el) => (el.onclick = () => openLightbox(photos.find((p) => p.id == el.dataset.id), mine)));
+}
+
+async function addGalleryPhotos(files) {
+  if (!currentSaved || !files.length) return;
+  const box = $("photos");
+  box.insertAdjacentHTML("afterbegin", `<div class="galempty" id="upMsg">Uploading ${files.length} photo(s)…</div>`);
+  for (const file of files) {
+    try {
+      const blob = await compress(file);
+      const data = await blobToDataURL(blob);
+      const thumb = await thumbDataURL(file);
+      await fetch(`/plants/${currentSaved.id}/photos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-User": me },
+        body: JSON.stringify({ data, thumb, caption: "" }),
+      });
+    } catch (e) { /* skip bad file */ }
+  }
+  await renderPhotos();
+}
+
+function openLightbox(ph, mine) {
+  if (!ph) return;
+  const lb = $("lightbox");
+  $("lbImg").src = `/photos/${ph.id}/full`;
+  $("lbCaption").textContent = ph.caption || "";
+  const acts = [];
+  acts.push(`<a href="/photos/${ph.id}/full" target="_blank" rel="noopener">Open / Save</a>`);
+  if (mine) {
+    if (!ph.is_cover) acts.push(`<button data-a="cover">Set as cover</button>`);
+    acts.push(`<button data-a="caption">Edit caption</button>`);
+    acts.push(`<button data-a="delete" class="danger">Delete</button>`);
+  }
+  $("lbActions").innerHTML = acts.join("");
+  $("lbActions").querySelectorAll("button").forEach((b) => (b.onclick = () => lbAction(b.dataset.a, ph)));
+  lb.classList.add("on");
+}
+function closeLightbox() {
+  $("lightbox").classList.remove("on");
+  $("lbImg").src = "";
+}
+async function lbAction(a, ph) {
+  if (a === "cover") {
+    await fetch(`/photos/${ph.id}`, { method: "PATCH", headers: { "Content-Type": "application/json", "X-User": me }, body: JSON.stringify({ is_cover: true }) });
+  } else if (a === "caption") {
+    const cap = prompt("Caption for this photo:", ph.caption || "");
+    if (cap === null) return;
+    await fetch(`/photos/${ph.id}`, { method: "PATCH", headers: { "Content-Type": "application/json", "X-User": me }, body: JSON.stringify({ caption: cap }) });
+  } else if (a === "delete") {
+    if (!confirm("Delete this photo?")) return;
+    await fetch(`/photos/${ph.id}`, { method: "DELETE", headers: { "X-User": me } });
+  }
+  closeLightbox();
+  await renderPhotos();
+}
+
+function exportPhotos(scope) {
+  const q = scope === "mine" ? `scope=mine&user=${encodeURIComponent(me || "")}` : `scope=${scope}`;
+  window.location.href = `/export?${q}`;
 }
 
 async function doDelete() {
@@ -570,6 +667,10 @@ function renderResale(d) {
 chip.onclick = showPicker;
 document.querySelectorAll("nav.tabs button").forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
 document.querySelectorAll("#modeToggle button").forEach((b) => (b.onclick = () => setMode(b.dataset.mode)));
+document.querySelectorAll("[data-export]").forEach((b) => (b.onclick = () => exportPhotos(b.dataset.export)));
+$("galleryInput").onchange = (e) => { const f = [...e.target.files]; e.target.value = ""; addGalleryPhotos(f); };
+$("lbClose").onclick = closeLightbox;
+$("lightbox").onclick = (e) => { if (e.target.id === "lightbox") closeLightbox(); };
 
 (async function init() {
   try {
