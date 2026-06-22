@@ -59,28 +59,78 @@ function showTab(name) {
 }
 
 /* ---------- identify ---------- */
+const LOADER_MSGS = [
+  "Reading your photo…", "Asking the plant its name…", "Checking its health…",
+  "Mixing up care tips…", "Pricing it for the shelf…", "Sketching the propagation…",
+  "Almost there — worth the wait…",
+];
+let loaderTimer = null;
+function startLoader() {
+  let i = 0;
+  $("loaderMsg").textContent = LOADER_MSGS[0];
+  $("loader").classList.add("on");
+  clearInterval(loaderTimer);
+  loaderTimer = setInterval(() => {
+    i = (i + 1) % LOADER_MSGS.length;
+    $("loaderMsg").textContent = LOADER_MSGS[i];
+  }, 3500);
+}
+function stopLoader() {
+  clearInterval(loaderTimer);
+  $("loader").classList.remove("on");
+}
+
+// POST with a timeout + one automatic retry (free-tier cold starts are slow)
+async function propagate(blob) {
+  const attempt = async (ms) => {
+    const fd = new FormData();
+    fd.append("file", blob, "plant.jpg");
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
+    try {
+      const r = await fetch("/propagate", { method: "POST", body: fd, signal: ctrl.signal });
+      if (!r.ok) {
+        const detail = await r.json().catch(() => ({}));
+        throw Object.assign(new Error(detail.detail || r.statusText), { status: r.status });
+      }
+      return await r.json();
+    } finally {
+      clearTimeout(t);
+    }
+  };
+  try {
+    return await attempt(70000);
+  } catch (err) {
+    // a 422 (no plant found) is a real answer — don't retry it
+    if (err.status === 422) throw err;
+    $("loaderMsg").textContent = "Waking the server — one more try…";
+    return await attempt(90000);
+  }
+}
+
 pick.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   card.style.display = "none";
   status.className = "status";
-  status.textContent = "Reading photo…";
+  status.textContent = "";
   const blob = await compress(file);
   lastThumb = await thumbDataURL(file);
   lastPhotoData = await blobToDataURL(blob);
   $("thumb").src = URL.createObjectURL(blob);
   $("thumb").style.display = "block";
-  status.textContent = "Identifying & assessing…";
+  startLoader();
   try {
-    const fd = new FormData();
-    fd.append("file", blob, "plant.jpg");
-    const r = await fetch("/propagate", { method: "POST", body: fd });
-    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
-    showResult(await r.json(), null, "");
+    showResult(await propagate(blob), null, "");
     status.textContent = "";
   } catch (err) {
     status.className = "status err";
-    status.textContent = "Couldn't analyze that — try a clearer, closer shot.";
+    status.textContent =
+      err.status === 422
+        ? "Couldn't spot a plant — try a clearer, closer shot."
+        : "That took too long or failed — tap the photo button to try again.";
+  } finally {
+    stopLoader();
   }
 });
 
@@ -796,8 +846,42 @@ function setSoilView(v) {
   soilView = v;
   $("soil-recipes").style.display = v === "recipes" ? "block" : "none";
   $("soil-packs").style.display = v === "packs" ? "block" : "none";
+  $("soil-profit").style.display = v === "profit" ? "block" : "none";
   document.querySelectorAll("#soil-toggle button").forEach((b) => b.classList.toggle("on", b.dataset.soil === v));
   if (v === "packs") loadSoilPacks();
+  if (v === "profit") renderProfit();
+}
+
+/* ---------- profit calculator ---------- */
+const money = (n) => (n < 0 ? "−$" : "$") + Math.abs(n).toFixed(2);
+function renderProfit() {
+  $("soil-profit").innerHTML = `<div class="calc">
+    <label>Total materials cost ($)</label>
+    <input id="cMat" type="number" inputmode="decimal" placeholder="e.g. 18" />
+    <div class="two">
+      <div><label>Bags you'll make</label><input id="cBags" type="number" inputmode="numeric" placeholder="e.g. 12" /></div>
+      <div><label>Price per bag ($)</label><input id="cPrice" type="number" inputmode="decimal" placeholder="e.g. 9" /></div>
+    </div>
+    <div class="calc-out" id="cOut"></div>
+  </div>
+  <p class="mkt-sub" style="margin-top:12px">Tip: a quart bag's ingredients usually run ~$1–2; pricing at ~3× materials lands in the $4–6/qt buyers expect.</p>`;
+  ["cMat", "cBags", "cPrice"].forEach((id) => ($(id).oninput = calcProfit));
+  calcProfit();
+}
+function calcProfit() {
+  const mat = parseFloat($("cMat").value) || 0;
+  const bags = parseFloat($("cBags").value) || 0;
+  const price = parseFloat($("cPrice").value) || 0;
+  const revenue = bags * price;
+  const profit = revenue - mat;
+  const margin = revenue > 0 ? Math.round((profit / revenue) * 100) : 0;
+  const perBag = bags > 0 ? profit / bags : 0;
+  $("cOut").innerHTML =
+    `<div class="calc-row"><span>Revenue (${bags || 0} × ${money(price)})</span><b>${money(revenue)}</b></div>` +
+    `<div class="calc-row"><span>Materials</span><b>−${money(mat)}</b></div>` +
+    `<div class="calc-row"><span>Profit per bag</span><b>${money(perBag)}</b></div>` +
+    `<div class="calc-profit ${profit >= 0 ? "pos" : "neg"}"><span class="pl">${profit >= 0 ? "Profit" : "Loss"}</span><span class="pv">${money(profit)}</span></div>` +
+    `<div class="calc-margin">${revenue > 0 ? margin + "% margin" : "&nbsp;"}</div>`;
 }
 
 function renderRecipes() {
@@ -953,6 +1037,23 @@ $("galleryInput").onchange = (e) => { const f = [...e.target.files]; e.target.va
 $("lbClose").onclick = closeLightbox;
 $("lightbox").onclick = (e) => { if (e.target.id === "lightbox") closeLightbox(); };
 document.querySelectorAll("#soil-toggle button").forEach((b) => (b.onclick = () => setSoilView(b.dataset.soil)));
+$("backupBtn").onclick = () => { window.location.href = "/backup"; };
+$("restoreBtn").onclick = () => $("restoreInput").click();
+$("restoreInput").onchange = async (e) => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  $("restoreMsg").textContent = "Restoring…";
+  try {
+    const data = JSON.parse(await f.text());
+    const r = await fetch("/restore", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+    const out = await r.json();
+    $("restoreMsg").textContent = `Restored ${out.plants} plant(s) and ${out.soil} soil batch(es). Refresh to see them.`;
+    if (activeTab === "family") loadFamily();
+  } catch (err) {
+    $("restoreMsg").textContent = "Couldn't read that backup file.";
+  }
+};
 $("soilClose").onclick = closeSoil;
 $("soilPhotoInput").onchange = async (e) => {
   const f = e.target.files[0]; e.target.value = "";

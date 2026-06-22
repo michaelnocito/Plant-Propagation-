@@ -479,6 +479,35 @@
   .sed.edible{background:#dde6c8; color:#3f4a30} .sed.parts_edible{background:#eedfbe; color:#735915}
   .sed.not_edible{background:var(--paper2); color:var(--sepia2)} .sed.toxic{background:#efd2c3; color:var(--madder-d)}
   .sed b{font-weight:700}
+  /* dancing-plant loader */
+  .loader{display:none; flex-direction:column; align-items:center; gap:12px; padding:30px 0}
+  .loader.on{display:flex}
+  .dancer{width:98px; height:auto}
+  .loader.on .dancer{animation:bop .95s ease-in-out infinite}
+  .loader.on .dancer .sway{transform-box:fill-box; transform-origin:50% 100%; animation:sway 1.15s ease-in-out infinite}
+  .loader-msg{color:var(--sepia2); font-size:14px; text-align:center; min-height:18px}
+  @keyframes bop{0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)}}
+  @keyframes sway{0%,100%{transform:rotate(-8deg)} 50%{transform:rotate(8deg)}}
+  /* data backup */
+  .databk{margin-top:26px; background:var(--paper2); border:1px solid var(--rule); border-radius:12px; padding:14px}
+  .databk-h{font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--sepia2); font-weight:700; margin-bottom:5px}
+  .databk p{font-size:12.5px; color:var(--inkg2); line-height:1.45; margin:0 0 11px}
+  .databk .exportbtn{display:block; width:100%; margin-bottom:8px}
+  .databk-msg{font-size:13px; color:var(--inkg); margin-top:4px}
+  /* profit calculator */
+  .calc{background:var(--card); border:1px solid var(--rule); border-radius:12px; padding:16px; box-shadow:var(--sheet)}
+  .calc label{display:block; font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:var(--sepia2); margin:12px 0 5px}
+  .calc label:first-child{margin-top:0}
+  .calc input{width:100%; border:1px solid var(--rule); border-radius:9px; padding:11px 12px; font-size:16px; background:var(--paper); color:var(--inkg); font-family:inherit}
+  .calc .two{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .calc-out{margin-top:18px; border-top:1px solid var(--rule); padding-top:14px}
+  .calc-row{display:flex; justify-content:space-between; font-size:14px; color:var(--inkg2); padding:4px 0}
+  .calc-row b{font-family:Georgia,serif; color:var(--inkg)}
+  .calc-profit{display:flex; justify-content:space-between; align-items:baseline; margin-top:10px; padding-top:12px; border-top:1px solid var(--rule)}
+  .calc-profit .pl{font-size:13px; text-transform:uppercase; letter-spacing:.5px; color:var(--sepia2)}
+  .calc-profit .pv{font-family:Georgia,serif; font-size:26px; font-weight:700}
+  .calc-profit.pos .pv{color:#4a5a32} .calc-profit.neg .pv{color:var(--madder-d)}
+  .calc-margin{text-align:right; font-size:12.5px; color:var(--sepia); margin-top:2px}
   /* soil lab */
   .recipe{background:var(--card); border:1px solid var(--rule); border-radius:10px; margin-bottom:10px; overflow:hidden; box-shadow:var(--sheet)}
   .recipe-h{padding:13px 14px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:10px}
@@ -544,6 +573,21 @@
     </label>
     <input id="pick" type="file" accept="image/*" capture="environment" />
     <img id="thumb" class="thumb" alt="" />
+    <div id="loader" class="loader">
+      <svg class="dancer" viewBox="0 0 90 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g class="sway">
+          <path d="M45 60 C45 45 45 35 45 26" stroke="#506239" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <path d="M45 40 C30 36 22 40 20 30 C32 28 42 30 45 40Z" fill="#6f8456"/>
+          <path d="M45 34 C58 30 66 33 70 24 C58 22 48 25 45 34Z" fill="#7e9472"/>
+          <circle cx="45" cy="24" r="8.5" fill="#87a07a"/>
+          <circle cx="42" cy="23" r="1.4" fill="#22392b"/><circle cx="48.5" cy="23" r="1.4" fill="#22392b"/>
+          <path d="M42 27 Q45.5 30.5 49 27" stroke="#22392b" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+        </g>
+        <path d="M30 60 H60 L56 85 a4 4 0 0 1-4 3.5 H38 a4 4 0 0 1-4-3.5 Z" fill="#bd6a45"/>
+        <rect x="28" y="56" width="34" height="7" rx="2" fill="#9c5232"/>
+      </svg>
+      <div id="loaderMsg" class="loader-msg">Reading your photo…</div>
+    </div>
     <div id="status" class="status"></div>
 
     <article id="card" class="card">
@@ -611,6 +655,13 @@
     <div class="vhrow"><h2 class="vh">Family garden</h2><button class="exportbtn" data-export="family">⤓ Export photos</button></div>
     <div id="family-filters" class="filters"></div>
     <div id="family-grid" class="grid"></div>
+    <div class="databk">
+      <div class="databk-h">Data backup</div>
+      <p>Render wipes saved data on each update until the always-on disk is enabled. Back up here first, then restore after.</p>
+      <button class="exportbtn" id="backupBtn">⤓ Back up everything</button>
+      <button class="exportbtn" id="restoreBtn">↥ Restore from a backup</button>
+      <div id="restoreMsg" class="databk-msg"></div>
+    </div>
   </section>
 
   <!-- MARKETPLACE -->
@@ -628,9 +679,11 @@
     <div class="filters" id="soil-toggle">
       <button data-soil="recipes" class="on">Recipes</button>
       <button data-soil="packs">My batches</button>
+      <button data-soil="profit">Profit</button>
     </div>
     <div id="soil-recipes"></div>
     <div id="soil-packs" style="display:none"></div>
+    <div id="soil-profit" style="display:none"></div>
   </section>
 </main>
 
@@ -667,6 +720,7 @@
 <!-- hidden input for adding gallery photos (camera OR library) -->
 <input type="file" id="galleryInput" accept="image/*" multiple style="display:none" />
 <input type="file" id="soilPhotoInput" accept="image/*" style="display:none" />
+<input type="file" id="restoreInput" accept="application/json,.json" style="display:none" />
 
 <!-- soil pack detail sheet -->
 <div id="soilDetail" class="sheet">

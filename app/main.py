@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from .claude import appraise_soil, enrich
-from .db import MEMBERS, Photo, Plant, Session, SoilPack, get_user, init_db
+from .db import MEMBERS, Photo, Plant, Session, SoilPack, User, get_user, init_db
 from .models import (
     CATEGORIES,
     VISIBILITIES,
@@ -509,6 +509,90 @@ async def delete_soil(soil_id: int, x_user: str | None = Header(default=None)):
         await s.delete(sp)
         await s.commit()
         return {"ok": True}
+
+
+# ---- backup / restore (full-data snapshot; survives redeploys) ----
+
+
+@app.get("/backup")
+async def backup():
+    """Download every plant + soil batch (with photos) as one JSON file."""
+    async with Session() as s:
+        plants = (
+            await s.execute(select(Plant).options(selectinload(Plant.owner), selectinload(Plant.photos)))
+        ).scalars().all()
+        soils = (await s.execute(select(SoilPack).options(selectinload(SoilPack.owner)))).scalars().all()
+        data = {
+            "version": 1,
+            "plants": [
+                {
+                    "owner": p.owner.slug, "visibility": p.visibility, "category": p.category,
+                    "nickname": p.nickname, "species": p.species, "common_name": p.common_name,
+                    "ai_result": json.loads(p.ai_result), "thumbnail": p.thumbnail,
+                    "in_market": p.in_market, "sold": p.sold, "props_in_progress": p.props_in_progress,
+                    "photos": [
+                        {"data": ph.data, "thumb": ph.thumb, "caption": ph.caption,
+                         "is_cover": ph.is_cover, "uploaded_by": ph.uploaded_by}
+                        for ph in sorted(p.photos, key=lambda x: x.id)
+                    ],
+                }
+                for p in plants
+            ],
+            "soil": [
+                {
+                    "owner": sp.owner.slug, "name": sp.name, "recipe_key": sp.recipe_key, "size": sp.size,
+                    "recipe": json.loads(sp.recipe or "{}"), "market": json.loads(sp.market or "{}"),
+                    "notes": sp.notes, "thumbnail": sp.thumbnail, "visibility": sp.visibility,
+                    "in_market": sp.in_market, "sold": sp.sold,
+                }
+                for sp in soils
+            ],
+        }
+        return Response(
+            content=json.dumps(data).encode(),
+            media_type="application/json",
+            headers={"Content-Disposition": 'attachment; filename="rootwork-backup.json"'},
+        )
+
+
+@app.post("/restore")
+async def restore(body: dict):
+    """Add everything from a backup file (non-destructive — inserts new rows)."""
+    async with Session() as s:
+        users = {u.slug: u for u in (await s.execute(select(User))).scalars()}
+        n_plants = n_soil = 0
+        for p in body.get("plants", []):
+            u = users.get(p.get("owner"))
+            if not u:
+                continue
+            plant = Plant(
+                owner_id=u.id, visibility=p.get("visibility", "private"), category=p.get("category", "houseplants"),
+                nickname=p.get("nickname", ""), species=p.get("species", ""), common_name=p.get("common_name", ""),
+                ai_result=json.dumps(p.get("ai_result", {})), thumbnail=p.get("thumbnail", ""),
+                in_market=bool(p.get("in_market")), sold=bool(p.get("sold")),
+                props_in_progress=int(p.get("props_in_progress", 0) or 0),
+            )
+            s.add(plant)
+            await s.flush()
+            for ph in p.get("photos", []):
+                s.add(Photo(
+                    plant_id=plant.id, data=ph.get("data", ""), thumb=ph.get("thumb", ""),
+                    caption=ph.get("caption", ""), is_cover=bool(ph.get("is_cover")), uploaded_by=ph.get("uploaded_by", ""),
+                ))
+            n_plants += 1
+        for sp in body.get("soil", []):
+            u = users.get(sp.get("owner"))
+            if not u:
+                continue
+            s.add(SoilPack(
+                owner_id=u.id, name=sp.get("name", ""), recipe_key=sp.get("recipe_key", ""), size=sp.get("size", ""),
+                recipe=json.dumps(sp.get("recipe", {})), market=json.dumps(sp.get("market", {})),
+                notes=sp.get("notes", ""), thumbnail=sp.get("thumbnail", ""), visibility=sp.get("visibility", "private"),
+                in_market=bool(sp.get("in_market")), sold=bool(sp.get("sold")),
+            ))
+            n_soil += 1
+        await s.commit()
+        return {"plants": n_plants, "soil": n_soil}
 
 
 @app.get("/")
