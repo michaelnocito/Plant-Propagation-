@@ -543,7 +543,14 @@ function renderSummary(d) {
   // marketplace value up top — what's this plant worth to sell
   const m = d.marketability || {};
   const e = d.established;
-  let html = `<div class="svalue">
+  let html = "";
+  const ed = d.edible;
+  if (ed && typeof ed === "object") {
+    const st = edStatus(ed);
+    const eat = st === "edible" || st === "parts_edible";
+    html += `<div class="sed ${st}">${ED_ICON[st]} <span><b>${ED_LABEL[st]}</b>${eat && ed.score != null ? ` · ${ed.score}/10` : ""}${ed.summary ? ` — ${esc(ed.summary)}` : ""}</span></div>`;
+  }
+  html += `<div class="svalue">
     <div class="sv-item"><span class="sv-k">✂️ Cuttings</span><span class="sv-p">${esc(m.est_price_range || "—")}</span><span class="sv-s">${m.score ?? "–"}/10</span></div>
     ${e ? `<div class="sv-item"><span class="sv-k">🪴 Whole plant</span><span class="sv-p">${esc(e.est_price_range || "—")}</span><span class="sv-s">${e.score ?? "–"}/10</span></div>` : ""}
   </div>`;
@@ -621,6 +628,7 @@ function render(d) {
   renderDiagnosis(d.diagnosis);
   renderSummary(d);
   renderCareDetail(d.care);
+  renderEdible(d.edible);
   applyMode();
   $("tags").innerHTML = [d.method, d.difficulty, d.timeline].map((t) => `<span class="tag">${esc(t)}</span>`).join("");
   $("svg").innerHTML = d.diagram_svg;
@@ -664,6 +672,32 @@ function renderResale(d) {
       e.sell_notes
     );
   $("resale").innerHTML = html + `</div>`;
+}
+
+/* ---------- edible / foraging ---------- */
+const ED_LABEL = { edible: "Edible", parts_edible: "Parts edible", not_edible: "Not edible", toxic: "Toxic" };
+const ED_ICON = { edible: "🍽", parts_edible: "🍽", not_edible: "🚫", toxic: "☠️" };
+const FORAGE_SAFETY =
+  "Identify with 100% certainty before eating — never on a photo or app guess. Some toxic lookalikes are deadly.";
+const edStatus = (e) => (["edible", "parts_edible", "not_edible", "toxic"].includes(e && e.status) ? e.status : "not_edible");
+
+function renderEdible(e) {
+  const sec = $("edible-sec"), box = $("edible");
+  if (!e || typeof e !== "object") {
+    sec.style.display = "none";
+    return;
+  }
+  sec.style.display = "block";
+  const st = edStatus(e);
+  const eat = st === "edible" || st === "parts_edible";
+  const rows = [["Edible parts", e.edible_parts], ["Easiest forage", e.forage], ["Easiest prep", e.prepare]].filter(([, v]) => v);
+  let html = `<div class="ed-head"><span class="ed-badge ${st}">${ED_ICON[st]} ${ED_LABEL[st]}</span>${
+    eat ? `<span class="ed-score">${e.score ?? "–"}<small>/10</small></span>` : ""
+  }</div>`;
+  if (e.summary) html += `<p class="ed-sum">${esc(e.summary)}</p>`;
+  if (rows.length) html += `<div class="ed-rows">${rows.map(([k, v]) => `<div class="c"><b>${k}</b><span>${esc(v)}</span></div>`).join("")}</div>`;
+  html += `<div class="caution"><div class="ct">⚠ Forage safely</div><p>${FORAGE_SAFETY}</p>${e.caution ? `<p>${esc(e.caution)}</p>` : ""}</div>`;
+  box.innerHTML = html;
 }
 
 /* ---------- boot ---------- */

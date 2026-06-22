@@ -69,6 +69,18 @@ class Diagnosis(BaseModel):
     issues: list[DiagnosisIssue] = []
 
 
+class Edible(BaseModel):
+    """Can you eat it — and if so, the easiest forage + prep. Safety-first."""
+
+    status: str  # edible | parts_edible | not_edible | toxic
+    score: int = Field(ge=0, le=10)  # palatability/worth (0 if not edible)
+    summary: str
+    edible_parts: str = ""  # which parts are edible (and which are NOT)
+    forage: str = ""  # easiest way + best season to find/harvest
+    prepare: str = ""  # easiest beginner preparation
+    caution: str = ""  # toxic parts, poisonous lookalikes, must-cook, limits
+
+
 class PropResult(BaseModel):
     species: str
     common_name: str
@@ -80,6 +92,7 @@ class PropResult(BaseModel):
     diagram_svg: str
     care: Care
     diagnosis: Diagnosis
+    edible: Edible
     marketability: Marketability  # cuttings / propagation resale
     established: EstablishedResale  # whole-plant resale
 

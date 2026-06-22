@@ -68,6 +68,15 @@ Return ONLY a JSON object (no markdown, no prose) with these exact keys:
       }}
     ]
   }},
+  "edible": {{
+    "status": "edible | parts_edible | not_edible | toxic",
+    "score": 0-10 integer (how worthwhile/palatable to eat; 0 if not edible or toxic),
+    "summary": "one honest line — what's edible, or why you shouldn't eat it",
+    "edible_parts": "which parts are edible AND which parts to avoid (empty if none edible)",
+    "forage": "the EASIEST beginner way + best season to find/harvest it (empty if not edible)",
+    "prepare": "the EASIEST beginner way to prepare/eat it (empty if not edible)",
+    "caution": "the real safety risks: toxic parts, poisonous LOOKALIKES, must-cook, raw toxicity, allergy/quantity limits"
+  }},
   "marketability": {{
     "score": 1-10 integer (sellability of CUTTINGS / propagations on Etsy/FB Marketplace),
     "demand": "low | medium | high",
@@ -107,6 +116,12 @@ LIGHT & TEMPERATURE must be RANGES with a real thriving zone — never a single 
 like "low light". If a plant only survives (but won't thrive) in dim light, say that in
 "floor" and put where it's happiest in "thriving". Make placements concrete.
 
+EDIBLE — be conservative and safety-first. If any part is toxic, use status "toxic" or
+"parts_edible" and warn clearly (danger to children and pets). If you are not confident a plant
+is safely edible, use "not_edible". ALWAYS fill "caution" with the real risks — especially
+poisonous lookalikes and toxic parts. Foraging/prep must be the genuinely easiest beginner method.
+Never imply that an app photo ID is enough to safely eat a wild plant.
+
 RESALE: rate "marketability" for CUTTINGS (yield + price-per-cutting + demand) and "established"
 for the WHOLE potted plant — they often differ (slow rare plants sell better whole; fast easy
 plants sell better as cheap cuttings).
@@ -135,7 +150,7 @@ async def enrich(species: str, common: str, image: bytes, content_type: str | No
     ]
     msg = await client.messages.create(
         model=MODEL,
-        max_tokens=4000,
+        max_tokens=4500,
         messages=[{"role": "user", "content": content}],
     )
     text = "".join(b.text for b in msg.content if b.type == "text")

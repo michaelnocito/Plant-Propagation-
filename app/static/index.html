@@ -456,6 +456,29 @@
   .who-card{background:var(--card); border:1px solid var(--rule); box-shadow:0 18px 38px -14px rgba(0,0,0,.5)}
   .who-card span{color:var(--inkg)}
 
+  /* edible / foraging */
+  .ed-head{display:flex; align-items:center; gap:10px}
+  .ed-badge{font-size:11px; text-transform:uppercase; letter-spacing:.5px; padding:4px 10px; border-radius:999px; font-weight:700}
+  .ed-badge.edible{background:#dde6c8; color:#4a5a32}
+  .ed-badge.parts_edible{background:#eedfbe; color:#866418}
+  .ed-badge.not_edible{background:var(--paper2); color:var(--sepia2)}
+  .ed-badge.toxic{background:#efd2c3; color:var(--madder-d)}
+  .ed-score{font-family:Georgia,serif; font-weight:700; color:var(--inkg); font-size:18px}
+  .ed-score small{font-size:11px; color:var(--sepia); font-weight:400}
+  .ed-sum{font-size:14px; line-height:1.45; margin:7px 0 0; color:var(--inkg)}
+  .ed-rows{display:grid; gap:11px; margin-top:12px}
+  .ed-rows .c{display:grid; grid-template-columns:96px 1fr; gap:10px; align-items:start}
+  .ed-rows .c b{font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--sepia2); padding-top:2px}
+  .ed-rows .c span{font-size:14px; line-height:1.45; color:var(--inkg)}
+  .caution{margin-top:13px; background:#f4e3d5; border:1px solid #d8a98c; border-left:4px solid var(--madder);
+    border-radius:10px; padding:11px 13px}
+  .caution .ct{font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--madder-d); font-weight:700; margin-bottom:5px}
+  .caution p{margin:0 0 6px; font-size:13px; line-height:1.45; color:var(--inkg)} .caution p:last-child{margin-bottom:0}
+  /* summary edible strip */
+  .sed{display:flex; align-items:center; gap:9px; padding:10px 12px; border-radius:12px; margin-bottom:12px; font-size:13.5px; line-height:1.4}
+  .sed.edible{background:#dde6c8; color:#3f4a30} .sed.parts_edible{background:#eedfbe; color:#735915}
+  .sed.not_edible{background:var(--paper2); color:var(--sepia2)} .sed.toxic{background:#efd2c3; color:var(--madder-d)}
+  .sed b{font-weight:700}
   /* soften remaining bold-green accents to sage */
   .dx.healthy .dot{background:#6f8456}
   .dx.healthy{background:#e7ead0; border-color:#c2c79f}
@@ -517,6 +540,11 @@
         <div class="sec">
           <h3 class="sec-h">How to make me super</h3>
           <div id="care"></div>
+        </div>
+
+        <div class="sec" id="edible-sec">
+          <h3 class="sec-h">Foraging &amp; kitchen</h3>
+          <div id="edible"></div>
         </div>
 
         <div class="sec">
