@@ -142,9 +142,14 @@ async def _ensure_columns(conn) -> None:
 
 
 async def init_db() -> None:
+    from sqlalchemy import text
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await _ensure_columns(conn)
+        # everything is shared (Family) now — flip any leftover private rows (idempotent)
+        for tbl in ("plants", "soil_packs", "seeds"):
+            await conn.execute(text(f"UPDATE {tbl} SET visibility='family' WHERE visibility='private'"))
     async with Session() as s:
         existing = {u.slug for u in (await s.execute(select(User))).scalars()}
         for m in MEMBERS:

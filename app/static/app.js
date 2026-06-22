@@ -204,10 +204,6 @@ function renderSavebar() {
   const opts = CATS.map(([v, l]) => `<option value="${v}" ${p.category === v ? "selected" : ""}>${l}</option>`).join("");
   bar.innerHTML = `<div class="savedrow">
     <div class="who">In <b>${esc(m.display_name)}’s</b> plants</div>
-    <div class="seg" id="visSeg">
-      <button data-v="private" class="${p.visibility === "private" ? "on" : ""}">Private</button>
-      <button data-v="family" class="${p.visibility === "family" ? "on" : ""}">Family</button>
-    </div>
     <div class="pickline"><label>Category</label><select id="catSel">${opts}</select></div>
     <input class="nick" id="nickInp" placeholder="Add a nickname (optional)" value="${esc(p.nickname)}" />
     <button class="mktbtn ${p.in_market ? "on" : ""}" id="mktBtn">${
@@ -228,7 +224,6 @@ function renderSavebar() {
     </div>
     <button class="delbtn" id="delBtn">Remove from my plants</button>
   </div>`;
-  $("visSeg").querySelectorAll("button").forEach((b) => (b.onclick = () => patch({ visibility: b.dataset.v })));
   $("catSel").onchange = (e) => patch({ category: e.target.value }, false);
   $("nickInp").onblur = (e) => patch({ nickname: e.target.value }, false);
   $("mktBtn").onclick = () => patch({ in_market: !currentSaved.in_market });
@@ -250,7 +245,7 @@ async function doSave(inMarket) {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-User": me },
       body: JSON.stringify({
-        visibility: "private",
+        visibility: "family",
         category: "houseplants",
         nickname: "",
         species: currentResult.species,
@@ -1285,7 +1280,7 @@ async function makePack(key) {
   if (btn) { btn.disabled = true; btn.textContent = "Mixing & pricing…"; }
   const pack = await postSoil({
     name: r.name, recipe_key: r.key, size: "1 Quart",
-    recipe: { ingredients: r.ingredients, suits: r.suits }, visibility: "private", in_market: false,
+    recipe: { ingredients: r.ingredients, suits: r.suits }, visibility: "family", in_market: false,
   });
   if (btn) { btn.disabled = false; btn.textContent = "＋ Make a batch from this"; }
   if (pack) { setSoilView("packs"); openSoil(pack); }
@@ -1294,7 +1289,7 @@ async function newCustomPack() {
   if (!me) return showPicker();
   const name = prompt("Name this mix (e.g. 'My custom aroid blend'):");
   if (!name) return;
-  const pack = await postSoil({ name, recipe_key: "custom", size: "1 Quart", recipe: {}, visibility: "private", in_market: false });
+  const pack = await postSoil({ name, recipe_key: "custom", size: "1 Quart", recipe: {}, visibility: "family", in_market: false });
   if (pack) openSoil(pack);
 }
 
@@ -1396,8 +1391,7 @@ function renderSoilDetail() {
   if (mine) {
     html += `<div class="savedrow" style="margin-top:16px">
       <div class="who">Manage</div>
-      <div class="seg" id="soilVis"><button data-v="private" class="${sp.visibility === "private" ? "on" : ""}">Private</button><button data-v="family" class="${sp.visibility === "family" ? "on" : ""}">Family</button></div>
-      <div class="pickline" style="margin-top:11px"><label>Bag size</label><select id="soilSize">${SOIL_SIZES.map((s) => `<option ${sp.size === s ? "selected" : ""}>${s}</option>`).join("")}</select></div>
+      <div class="pickline" style="margin-top:2px"><label>Bag size</label><select id="soilSize">${SOIL_SIZES.map((s) => `<option ${sp.size === s ? "selected" : ""}>${s}</option>`).join("")}</select></div>
       <button class="mktbtn ${sp.in_market ? "on" : ""}" id="soilMkt">${sp.in_market ? "✓ Listed on Marketplace" : "＋ List on Marketplace"}</button>
       <div class="mline2"><button class="mgbtn ${sp.sold ? "on" : ""}" id="soilSold">${sp.sold ? "↩ Mark available" : "✓ Mark as sold"}</button></div>
       <div class="mline2"><button class="link" id="soilPhoto">${sp.thumbnail ? "Change photo" : "Add photo"}</button></div>
@@ -1406,7 +1400,6 @@ function renderSoilDetail() {
   }
   $("soilBody").innerHTML = html;
   if (mine) {
-    $("soilVis").querySelectorAll("button").forEach((b) => (b.onclick = () => soilPatch({ visibility: b.dataset.v })));
     $("soilSize").onchange = (e) => soilSizeChanged(e.target.value);
     $("soilMkt").onclick = () => soilPatch({ in_market: !currentSoil.in_market });
     $("soilSold").onclick = () => soilPatch({ sold: !currentSoil.sold });
@@ -1453,7 +1446,7 @@ async function newSeed() {
   let sd = null;
   try {
     const r = await fetch("/seeds", { method: "POST", headers: { "Content-Type": "application/json", "X-User": me },
-      body: JSON.stringify({ name, quantity: "1 packet", visibility: "private", in_market: false }) });
+      body: JSON.stringify({ name, quantity: "1 packet", visibility: "family", in_market: false }) });
     if (r.ok) sd = await r.json();
   } catch (e) { /* handled below */ }
   if (btn) { btn.disabled = false; btn.textContent = "＋ New seed variety"; }
@@ -1484,8 +1477,7 @@ function renderSeedDetail() {
   if (mine) {
     html += `<div class="savedrow" style="margin-top:16px">
       <div class="who">Manage</div>
-      <div class="seg" id="seedVis"><button data-v="private" class="${sd.visibility === "private" ? "on" : ""}">Private</button><button data-v="family" class="${sd.visibility === "family" ? "on" : ""}">Family</button></div>
-      <input class="nick" id="seedQty" placeholder="Quantity (e.g. 1 packet)" value="${esc(sd.quantity)}" />
+      <input class="nick" id="seedQty" placeholder="Quantity (e.g. 1 packet)" value="${esc(sd.quantity)}" style="margin-top:2px" />
       <input class="nick" id="seedSrc" placeholder="Source (optional)" value="${esc(sd.source)}" style="margin-top:8px" />
       <button class="mktbtn ${sd.in_market ? "on" : ""}" id="seedMkt">${sd.in_market ? "✓ Listed on Marketplace" : "＋ List on Marketplace"}</button>
       <div class="mline2"><button class="mgbtn ${sd.sold ? "on" : ""}" id="seedSold">${sd.sold ? "↩ Mark available" : "✓ Mark as sold"}</button></div>
@@ -1495,7 +1487,6 @@ function renderSeedDetail() {
   }
   $("seedBody").innerHTML = html;
   if (mine) {
-    $("seedVis").querySelectorAll("button").forEach((b) => (b.onclick = () => seedPatch({ visibility: b.dataset.v })));
     $("seedQty").onblur = (e) => seedPatch({ quantity: e.target.value }, false);
     $("seedSrc").onblur = (e) => seedPatch({ source: e.target.value }, false);
     $("seedMkt").onclick = () => seedPatch({ in_market: !currentSeed.in_market });

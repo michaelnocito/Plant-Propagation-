@@ -105,7 +105,7 @@ VISIBILITIES = {"private", "family"}
 
 
 class PlantIn(BaseModel):
-    visibility: str = "private"
+    visibility: str = "family"
     category: str = "houseplants"
     nickname: str = ""
     species: str = ""
@@ -205,7 +205,7 @@ class SoilPackIn(BaseModel):
     market: dict = {}
     notes: str = ""
     thumbnail: str = ""
-    visibility: str = "private"
+    visibility: str = "family"
     in_market: bool = False
 
 
@@ -253,7 +253,7 @@ class SeedIn(BaseModel):
     market: dict = {}
     notes: str = ""
     thumbnail: str = ""
-    visibility: str = "private"
+    visibility: str = "family"
     in_market: bool = False
 
 
