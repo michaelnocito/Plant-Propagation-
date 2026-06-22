@@ -149,12 +149,32 @@ function renderSavebar() {
     <button class="mktbtn ${p.in_market ? "on" : ""}" id="mktBtn">${
       p.in_market ? "✓ Listed on Marketplace" : "＋ List on Marketplace"
     }</button>
+    <div class="manage">
+      <div class="mline">
+        <span>🌱 Propagations rooting</span>
+        <span class="stepper"><button id="propMinus" aria-label="fewer">−</button><b id="propN">${p.props_in_progress}</b><button id="propPlus" aria-label="more">+</button></span>
+      </div>
+      <div class="mline2">
+        <button class="mgbtn ${p.sold ? "on" : ""}" id="soldBtn">${p.sold ? "↩ Mark available" : "✓ Mark as sold"}</button>
+      </div>
+      <div class="mline2">
+        <button class="link" id="photoBtn">${p.thumbnail ? "Change photo" : "Add photo"}</button>
+        ${p.thumbnail ? `<button class="link" id="rmPhotoBtn">Remove photo</button>` : ""}
+      </div>
+    </div>
+    <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" />
     <button class="delbtn" id="delBtn">Remove from my plants</button>
   </div>`;
   $("visSeg").querySelectorAll("button").forEach((b) => (b.onclick = () => patch({ visibility: b.dataset.v })));
   $("catSel").onchange = (e) => patch({ category: e.target.value }, false);
   $("nickInp").onblur = (e) => patch({ nickname: e.target.value }, false);
   $("mktBtn").onclick = () => patch({ in_market: !currentSaved.in_market });
+  $("soldBtn").onclick = () => patch({ sold: !currentSaved.sold });
+  $("propMinus").onclick = () => stepProps(-1);
+  $("propPlus").onclick = () => stepProps(1);
+  $("photoBtn").onclick = () => $("photoInput").click();
+  $("photoInput").onchange = onPhotoPick;
+  if ($("rmPhotoBtn")) $("rmPhotoBtn").onclick = () => patch({ thumbnail: "" });
   $("delBtn").onclick = doDelete;
 }
 
@@ -200,6 +220,21 @@ async function patch(fields, rerender = true) {
       if (rerender) renderSavebar();
     }
   } catch (e) { /* keep UI as-is */ }
+}
+
+async function stepProps(delta) {
+  const n = Math.max(0, (currentSaved.props_in_progress || 0) + delta);
+  $("propN").textContent = n; // optimistic
+  await patch({ props_in_progress: n }, false);
+}
+
+async function onPhotoPick(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const thumb = await thumbDataURL(file);
+  await patch({ thumbnail: thumb });
+  $("thumb").src = thumb;
+  $("thumb").style.display = "block";
 }
 
 async function doDelete() {
@@ -272,12 +307,18 @@ function pcard(p) {
 /* ---------- marketplace ---------- */
 let marketRows = [];
 let marketSort = "opp";
+let showSold = false;
 const EASE = { easy: 1, moderate: 0.6, hard: 0.35 };
 const MSORTS = [["opp", "Best bets"], ["prop", "Cuttings $"], ["plant", "Whole-plant $"], ["easy", "Easiest"]];
 
 function parsePrice(str) {
   const nums = String(str || "").replace(/,/g, "").match(/\d+(\.\d+)?/g);
   return nums ? Math.max(...nums.map(Number)) : 0;
+}
+function parseRange(str) {
+  const nums = (String(str || "").replace(/,/g, "").match(/\d+(\.\d+)?/g) || []).map(Number);
+  if (!nums.length) return [0, 0];
+  return [Math.min(...nums), Math.max(...nums)];
 }
 function metrics(p) {
   const a = p.ai_result || {};
@@ -303,21 +344,45 @@ async function loadMarket() {
 
 function drawMarket() {
   const sortEl = $("market-sort"), list = $("market-list");
-  sortEl.innerHTML = MSORTS.map(([k, l]) => `<button data-s="${k}" class="${marketSort === k ? "on" : ""}">${l}</button>`).join("");
-  sortEl.querySelectorAll("button").forEach((b) => (b.onclick = () => { marketSort = b.dataset.s; drawMarket(); }));
+  const soldCount = marketRows.filter((p) => p.sold).length;
+  sortEl.innerHTML =
+    MSORTS.map(([k, l]) => `<button data-s="${k}" class="${marketSort === k ? "on" : ""}">${l}</button>`).join("") +
+    `<button data-toggle="sold" class="${showSold ? "on" : ""}">${showSold ? "Hide sold" : `Show sold${soldCount ? ` (${soldCount})` : ""}`}</button>`;
+  sortEl.querySelectorAll("button[data-s]").forEach((b) => (b.onclick = () => { marketSort = b.dataset.s; drawMarket(); }));
+  const tog = sortEl.querySelector("button[data-toggle]");
+  if (tog) tog.onclick = () => { showSold = !showSold; drawMarket(); };
+
   if (!marketRows.length) {
     list.innerHTML = `<div class="empty">Nothing listed yet.<br>Open a plant and tap <b>List on Marketplace</b> (or use <b>Save &amp; list</b> when saving).</div>`;
     return;
   }
-  const rows = marketRows.map((p) => ({ p, x: metrics(p) }));
+
+  // running totals from the AVAILABLE (unsold) listings
+  const avail = marketRows.filter((p) => !p.sold);
+  let lo = 0, hi = 0, props = 0;
+  avail.forEach((p) => {
+    const a = p.ai_result || {};
+    const [mn, mx] = parseRange((a.established && a.established.est_price_range) || (a.marketability && a.marketability.est_price_range));
+    lo += mn;
+    hi += mx;
+    props += p.props_in_progress || 0;
+  });
+  const stats = `<div class="mstats">
+    <div class="mstat"><div class="mn">$${Math.round(lo)}–$${Math.round(hi)}</div><div class="ml">potential value</div></div>
+    <div class="mstat"><div class="mn">${avail.length}</div><div class="ml">for sale</div></div>
+    <div class="mstat"><div class="mn">${props}</div><div class="ml">props rooting</div></div>
+  </div>`;
+
+  const pool = showSold ? marketRows : avail;
+  const rows = pool.map((p) => ({ p, x: metrics(p) }));
   const cmp = {
     opp: (a, b) => b.x.opp - a.x.opp,
     prop: (a, b) => b.x.propPrice - a.x.propPrice || b.x.propScore - a.x.propScore,
     plant: (a, b) => b.x.estPrice - a.x.estPrice || b.x.estScore - a.x.estScore,
     easy: (a, b) => b.x.ease - a.x.ease || Math.max(b.x.propScore, b.x.estScore) - Math.max(a.x.propScore, a.x.estScore),
   }[marketSort];
-  rows.sort(cmp);
-  list.innerHTML = rows.map(({ p, x }) => mrow(p, x)).join("");
+  rows.sort((a, b) => a.p.sold - b.p.sold || cmp(a, b)); // sold ones sink to the bottom
+  list.innerHTML = stats + (rows.length ? rows.map(({ p, x }) => mrow(p, x)).join("") : `<div class="empty">Nothing for sale right now.</div>`);
   list.querySelectorAll(".mrow").forEach((el, i) => (el.onclick = () => showResult(rows[i].p.ai_result, rows[i].p, rows[i].p.thumbnail)));
 }
 
@@ -326,14 +391,16 @@ function mrow(p, x) {
   const img = p.thumbnail ? `<img class="mph" src="${p.thumbnail}" alt="">` : `<div class="mnoph">🪴</div>`;
   const title = p.nickname || p.common_name || p.species;
   const ease = (x.m.propagation_ease || "").toLowerCase();
-  return `<div class="mrow">${img}
+  const propTag = p.props_in_progress ? `<span title="propagations rooting">🌱 ${p.props_in_progress} rooting</span>` : "";
+  return `<div class="mrow${p.sold ? " sold" : ""}">${img}
     <div>
-      <div class="mname">${esc(title)} <span class="owndot" style="background:${m.color}" title="${esc(m.display_name)}">${esc((m.display_name[0] || "?").toUpperCase())}</span></div>
+      <div class="mname">${esc(title)} <span class="owndot" style="background:${m.color}" title="${esc(m.display_name)}">${esc((m.display_name[0] || "?").toUpperCase())}</span>${p.sold ? ` <span class="soldtag">Sold</span>` : ""}</div>
       <div class="msp">${esc(p.common_name || p.species)}</div>
       <div class="mtags">
         <span>✂️ <b>${x.propScore || "–"}</b> ${esc(x.m.est_price_range || "")}</span>
         ${x.e ? `<span>🪴 <b>${x.estScore || "–"}</b> ${esc(x.e.est_price_range || "")}</span>` : ""}
         <span class="ease-${ease}">${esc(cap(ease) || "—")} prop</span>
+        ${propTag}
       </div>
     </div>
     <div class="opp"><div class="on">${x.opp}</div><div class="ol">sell score</div></div>
@@ -373,11 +440,18 @@ function lightZones(L) {
 
 function renderSummary(d) {
   const c = d.care || {};
+  // marketplace value up top — what's this plant worth to sell
+  const m = d.marketability || {};
+  const e = d.established;
+  let html = `<div class="svalue">
+    <div class="sv-item"><span class="sv-k">✂️ Cuttings</span><span class="sv-p">${esc(m.est_price_range || "—")}</span><span class="sv-s">${m.score ?? "–"}/10</span></div>
+    ${e ? `<div class="sv-item"><span class="sv-k">🪴 Whole plant</span><span class="sv-p">${esc(e.est_price_range || "—")}</span><span class="sv-s">${e.score ?? "–"}/10</span></div>` : ""}
+  </div>`;
   const tiles = [
     ["☀️ Sun", sunThriving(c)], ["🪴 Soil", soilShort(c)], ["💧 Water", waterShort(c)],
     ["🌡️ Temp", tempIdeal(c)], ["💦 Humidity", c.humidity || "—"],
   ];
-  let html = `<div class="sgrid">${tiles
+  html += `<div class="sgrid">${tiles
     .map(([k, v]) => `<div class="stile"><div class="sk">${k}</div><div class="sv">${esc(v)}</div></div>`)
     .join("")}</div>`;
   if (hasLight(c)) html += `<div class="srange"><div class="srk">Light range</div>${lightZones(c.light)}</div>`;
@@ -401,8 +475,8 @@ function renderCareDetail(c) {
   $("care").innerHTML = html;
 }
 
-/* summary ⇄ detail toggle (sticky preference) */
-let viewMode = localStorage.getItem("rootwork_mode") || "detail";
+/* summary ⇄ detail toggle (sticky preference; opens on Summary by default) */
+let viewMode = localStorage.getItem("rootwork_mode") || "summary";
 function applyMode() {
   $("summary").classList.toggle("on", viewMode === "summary");
   $("detailBody").style.display = viewMode === "summary" ? "none" : "block";

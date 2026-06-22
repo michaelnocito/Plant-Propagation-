@@ -63,6 +63,8 @@ class Plant(Base):
     ai_result: Mapped[str] = mapped_column(Text)  # full saved AI response, JSON string
     thumbnail: Mapped[str] = mapped_column(Text, default="")  # small base64 data URI
     in_market: Mapped[bool] = mapped_column(default=False)  # listed on the family marketplace
+    sold: Mapped[bool] = mapped_column(default=False)  # sold — hidden from the active marketplace
+    props_in_progress: Mapped[int] = mapped_column(default=0)  # cuttings currently rooting
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     owner: Mapped[User] = relationship(back_populates="plants")
 
@@ -75,6 +77,10 @@ async def _ensure_columns(conn) -> None:
     cols = {r[1] for r in (await conn.exec_driver_sql("PRAGMA table_info(plants)")).all()}
     if "in_market" not in cols:
         await conn.execute(text("ALTER TABLE plants ADD COLUMN in_market BOOLEAN DEFAULT 0 NOT NULL"))
+    if "sold" not in cols:
+        await conn.execute(text("ALTER TABLE plants ADD COLUMN sold BOOLEAN DEFAULT 0 NOT NULL"))
+    if "props_in_progress" not in cols:
+        await conn.execute(text("ALTER TABLE plants ADD COLUMN props_in_progress INTEGER DEFAULT 0 NOT NULL"))
 
 
 async def init_db() -> None:

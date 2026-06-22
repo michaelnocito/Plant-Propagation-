@@ -203,6 +203,35 @@
   .mrow .opp .ol{font-size:9px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted)}
   .mrow .owndot{display:inline-grid; place-items:center; width:15px; height:15px; border-radius:50%;
     font-size:8px; color:#fff; font-weight:700; font-family:Georgia,serif; vertical-align:middle}
+  .mrow.sold{opacity:.55}
+  .soldtag{font-size:9px; text-transform:uppercase; letter-spacing:.5px; background:#5a4636; color:#e9d9c6;
+    border-radius:999px; padding:2px 7px; vertical-align:middle}
+  /* marketplace running totals */
+  .mstats{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px}
+  .mstat{background:var(--ink2); border:1px solid var(--line); border-radius:12px; padding:11px 8px; text-align:center}
+  .mstat .mn{font-family:Georgia,serif; font-size:18px; font-weight:700; color:var(--copper)}
+  .mstat .ml{font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); margin-top:2px}
+  /* resale value banner in summary */
+  .svalue{display:grid; gap:8px; grid-template-columns:1fr 1fr; margin-bottom:12px}
+  .svalue .sv-item{background:var(--ink2); color:var(--parch); border-radius:12px; padding:11px 12px;
+    display:flex; flex-direction:column; gap:2px}
+  .svalue .sv-k{font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--sage)}
+  .svalue .sv-p{font-size:15px; font-weight:600; color:var(--copper)}
+  .svalue .sv-s{font-size:11px; color:var(--muted)}
+  /* manage submenu (owned saved plant) */
+  .manage{margin-top:12px; border-top:1px solid #d8ccae; padding-top:10px}
+  .mline{display:flex; align-items:center; justify-content:space-between; font-size:14px; color:var(--ink)}
+  .mline2{margin-top:10px}
+  .stepper{display:inline-flex; align-items:center; gap:12px; background:#fff; border:1px solid #ddd2b6;
+    border-radius:999px; padding:3px 6px}
+  .stepper button{width:30px; height:30px; border:none; background:var(--parch2); border-radius:50%;
+    font-size:18px; line-height:1; color:var(--ink); cursor:pointer}
+  .stepper b{min-width:18px; text-align:center; font-family:Georgia,serif; font-size:17px}
+  .mgbtn{width:100%; border:1px solid #c9a36f; border-radius:10px; padding:10px; font-size:14px;
+    font-weight:600; background:#fff; color:#8a5a2a; cursor:pointer}
+  .mgbtn.on{background:#5a4636; color:#f0e4d4; border-color:#5a4636}
+  .manage .link{background:none; border:none; color:var(--copper); font-size:13px; cursor:pointer;
+    text-decoration:underline; padding:0; margin-right:16px}
   /* bottom tab bar */
   nav.tabs{position:fixed; left:0; right:0; bottom:0; z-index:20;
     background:rgba(15,28,20,.92); backdrop-filter:blur(10px); border-top:1px solid var(--line);

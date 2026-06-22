@@ -60,6 +60,8 @@ def _out(p: Plant) -> PlantOut:
         ai_result=json.loads(p.ai_result),
         thumbnail=p.thumbnail,
         in_market=p.in_market,
+        sold=p.sold,
+        props_in_progress=p.props_in_progress,
         created_at=p.created_at.isoformat(),
     )
 
@@ -149,6 +151,12 @@ async def update_plant(plant_id: int, body: PlantPatch, x_user: str | None = Hea
             p.nickname = body.nickname.strip()[:80]
         if body.in_market is not None:
             p.in_market = body.in_market
+        if body.sold is not None:
+            p.sold = body.sold
+        if body.props_in_progress is not None:
+            p.props_in_progress = max(0, min(999, body.props_in_progress))
+        if body.thumbnail is not None:
+            p.thumbnail = body.thumbnail
         await s.commit()
         await s.refresh(p, ["owner"])
         return _out(p)

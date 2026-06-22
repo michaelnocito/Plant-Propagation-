@@ -106,6 +106,9 @@ class PlantPatch(BaseModel):
     category: str | None = None
     nickname: str | None = None
     in_market: bool | None = None
+    sold: bool | None = None
+    props_in_progress: int | None = None
+    thumbnail: str | None = None  # replace / clear the photo
 
 
 class PlantOut(BaseModel):
@@ -121,4 +124,6 @@ class PlantOut(BaseModel):
     ai_result: dict
     thumbnail: str
     in_market: bool
+    sold: bool
+    props_in_progress: int
     created_at: str

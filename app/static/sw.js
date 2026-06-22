@@ -1,4 +1,4 @@
-const C = "rootwork-v6";
+const C = "rootwork-v7";
 const SHELL = [
   "/", "/index.html", "/app.js", "/manifest.json",
   "/apple-touch-icon.png", "/icon-192.png", "/icon-512.png",
