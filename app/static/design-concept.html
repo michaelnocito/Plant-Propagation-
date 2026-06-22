@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rootwork — Glasshouse concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,9..144&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     ROOTWORK — "GLASSHOUSE"
+     A bright Scandinavian-botanical direction.
+     PALETTE
+       --bone   #F7F4EC  app background (warm daylight)
+       --paper  #FFFFFF  card surface
+       --mist   #EEF0E8  tile / inset fill
+       --leaf   #2F6B4F  living green — primary accent
+       --leaf2  #3F8A66  lighter leaf for gradients
+       --clay   #B4623A  value / money accent (terracotta pot)
+       --ink    #1D2620  near-black text
+       --slate  #5E6B61  secondary text
+       --hair   #E3E0D4  hairline borders
+       --gold   #C99A2E  thrives / sweet-spot marker
+     TYPE  Fraunces (opsz serif) for display + numbers,
+           system sans for body / labels.
+     ============================================================ */
+  :root{
+    --bone:#F7F4EC; --paper:#FFFFFF; --mist:#EEF0E8;
+    --leaf:#2F6B4F; --leaf2:#3F8A66; --clay:#B4623A;
+    --ink:#1D2620; --slate:#5E6B61; --hair:#E3E0D4; --gold:#C99A2E;
+    --r-lg:22px; --r-md:16px; --r-sm:11px;
+    --s1:6px; --s2:10px; --s3:16px; --s4:24px; --s5:36px;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --serif:"Fraunces",Georgia,"Iowan Old Style",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--bone); color:var(--ink);
+    font-family:var(--sans); line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+    padding:0 0 60px;
+  }
+  .wrap{max-width:412px;margin:0 auto;padding:0 18px}
+
+  /* ---------- banner ---------- */
+  .banner{
+    background:var(--ink); color:var(--bone);
+    padding:18px 18px calc(18px + env(safe-area-inset-bottom,0));
+  }
+  .banner .wrap{padding:0 18px}
+  .banner .kicker{
+    font:600 11px/1 var(--sans); letter-spacing:.22em; text-transform:uppercase;
+    color:var(--leaf2); display:flex; align-items:center; gap:8px; margin-bottom:8px;
+  }
+  .banner h1{font:550 27px/1.05 var(--serif); font-optical-sizing:auto; letter-spacing:-.01em}
+  .banner h1 em{font-style:italic; color:#9fd9b8}
+  .banner p{font-size:13px; line-height:1.5; color:#cdd4c9; margin-top:9px; max-width:36ch}
+
+  /* ---------- screen scaffolding ---------- */
+  .screen{padding-top:var(--s4)}
+  .cap{
+    font:600 11px/1 var(--sans); letter-spacing:.18em; text-transform:uppercase;
+    color:var(--slate); display:flex; align-items:center; gap:9px; margin-bottom:var(--s3);
+  }
+  .cap::before{content:""; width:18px; height:1.5px; background:var(--clay); border-radius:2px}
+
+  /* phone frame */
+  .phone{
+    background:var(--bone); border-radius:30px;
+    border:1px solid var(--hair);
+    box-shadow:0 1px 0 #fff inset, 0 18px 40px -28px rgba(29,38,32,.5);
+    overflow:hidden; padding:0;
+  }
+  .phone-pad{padding:18px 16px 22px}
+
+  /* app top bar */
+  .appbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:4px 2px 14px;
+  }
+  .appbar .who{display:flex; align-items:center; gap:9px}
+  .avatar{
+    width:30px; height:30px; border-radius:50%;
+    background:linear-gradient(150deg,var(--leaf2),var(--leaf));
+    color:#fff; font:600 13px/30px var(--sans); text-align:center;
+  }
+  .appbar .who b{font:550 15px/1 var(--serif)}
+  .seg{
+    display:inline-flex; background:var(--mist); border-radius:999px;
+    padding:3px; gap:2px;
+  }
+  .seg button{
+    border:0; background:transparent; cursor:pointer;
+    font:600 12px/1 var(--sans); color:var(--slate);
+    padding:7px 13px; border-radius:999px;
+  }
+  .seg button.on{background:var(--paper); color:var(--ink); box-shadow:0 1px 4px rgba(29,38,32,.12)}
+
+  /* ---------- hero plant card ---------- */
+  .hero{
+    background:var(--paper); border-radius:var(--r-lg);
+    border:1px solid var(--hair); overflow:hidden;
+    box-shadow:0 14px 30px -26px rgba(29,38,32,.45);
+  }
+  .hero-img{
+    position:relative; height:148px;
+    background:
+      radial-gradient(120% 120% at 80% 10%, #4f9a72 0%, #2f6b4f 48%, #234f3b 100%);
+    overflow:hidden;
+  }
+  .hero-img svg{position:absolute; inset:0; width:100%; height:100%}
+  .match{
+    position:absolute; top:12px; left:12px;
+    display:flex; align-items:center; gap:7px;
+    background:rgba(255,255,255,.92); border-radius:999px;
+    padding:5px 11px 5px 6px; font:600 12px/1 var(--sans); color:var(--ink);
+    backdrop-filter:blur(4px);
+  }
+  .match .dot{
+    width:18px; height:18px; border-radius:50%;
+    background:conic-gradient(var(--leaf2) 0 90%, #d7e2d6 90% 100%);
+    display:grid; place-items:center;
+  }
+  .match .dot::after{content:""; width:9px; height:9px; border-radius:50%; background:#fff}
+  .hero-name{
+    position:absolute; left:14px; bottom:11px; color:#fff;
+    text-shadow:0 1px 10px rgba(0,0,0,.35);
+  }
+  .hero-name b{display:block; font:550 23px/1 var(--serif); letter-spacing:-.01em}
+  .hero-name span{font:400 12.5px/1 var(--sans); font-style:italic; opacity:.92; display:block; margin-top:5px}
+
+  .hero-body{padding:var(--s3)}
+
+  /* value banner */
+  .value{
+    display:grid; grid-template-columns:1fr 1px 1fr; align-items:center;
+    background:linear-gradient(180deg,#fbf6ef,#f8efe5);
+    border:1px solid #efdcc9; border-radius:var(--r-md);
+    padding:13px 8px; margin-bottom:var(--s3);
+  }
+  .value .div{width:1px; height:38px; background:#ecd6c2}
+  .value .v{text-align:center; padding:0 6px}
+  .value .v .lbl{font:600 10.5px/1 var(--sans); letter-spacing:.06em; text-transform:uppercase; color:var(--clay); display:flex; align-items:center; justify-content:center; gap:5px}
+  .value .v .amt{font:550 22px/1.05 var(--serif); color:#7c3f22; margin-top:6px; letter-spacing:-.01em}
+  .value .v .score{font:600 11px/1 var(--sans); color:var(--slate); margin-top:4px}
+  .value .v .score b{color:var(--clay)}
+
+  /* care tiles */
+  .tiles{display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:var(--s3)}
+  .tile{
+    background:var(--mist); border-radius:var(--r-sm); padding:11px 12px;
+    border:1px solid #e6e8de;
+  }
+  .tile.wide{grid-column:1/-1}
+  .tile .t-h{display:flex; align-items:center; gap:7px; margin-bottom:5px}
+  .tile .t-ic{width:22px; height:22px; flex:none}
+  .tile .t-l{font:600 11px/1 var(--sans); letter-spacing:.05em; text-transform:uppercase; color:var(--leaf)}
+  .tile .t-v{font:400 13px/1.3 var(--sans); color:var(--ink)}
+
+  /* range section */
+  .range-sec{margin-top:var(--s4)}
+  .sec-h{
+    font:550 16px/1 var(--serif); color:var(--ink); margin-bottom:var(--s3);
+    display:flex; align-items:baseline; justify-content:space-between;
+  }
+  .sec-h .unit{font:400 11px/1 var(--sans); color:var(--slate); letter-spacing:.04em}
+
+  /* signature grow-line range bar */
+  .grow{margin-bottom:var(--s4)}
+  .grow-track{position:relative; height:54px; margin:2px 4px 0}
+  .grow-track svg{position:absolute; inset:0; width:100%; height:100%; overflow:visible}
+  .grow-marks{display:flex; justify-content:space-between; margin-top:10px}
+  .grow-marks .m{flex:1; padding:0 2px}
+  .grow-marks .m.mid{text-align:center}
+  .grow-marks .m.right{text-align:right}
+  .grow-marks .m .tag{font:600 10px/1 var(--sans); letter-spacing:.05em; text-transform:uppercase; color:var(--slate)}
+  .grow-marks .m.mid .tag{color:var(--gold)}
+  .grow-marks .m .desc{font:400 11.5px/1.35 var(--sans); color:var(--ink); margin-top:5px}
+  .grow-marks .m.mid .desc{font-weight:500}
+
+  /* temp gauge */
+  .gauge{margin-top:6px}
+  .gauge-bar{
+    position:relative; height:16px; border-radius:999px; overflow:hidden;
+    background:linear-gradient(90deg,#7fa9c9 0%,#9ec0a6 28%,var(--leaf2) 46%,var(--leaf2) 60%,#d8b25e 78%,#cf7b46 100%);
+  }
+  .gauge-band{
+    position:absolute; top:-3px; bottom:-3px; left:34%; width:34%;
+    border:2px solid #fff; border-radius:999px;
+    box-shadow:0 0 0 1px rgba(47,107,79,.5), 0 2px 6px rgba(0,0,0,.12);
+  }
+  .gauge-scale{display:flex; justify-content:space-between; margin-top:9px}
+  .gauge-scale .end{font:600 11px/1 var(--sans); color:var(--slate)}
+  .gauge-scale .sweet{
+    font:600 11px/1 var(--sans); color:var(--leaf);
+    background:#e7f0e8; border-radius:999px; padding:5px 10px;
+  }
+
+  /* ---------- marketplace ---------- */
+  .mk-head{
+    background:var(--ink); color:var(--bone); border-radius:var(--r-lg);
+    padding:16px 16px 15px; margin-bottom:var(--s3);
+    position:relative; overflow:hidden;
+  }
+  .mk-head .leaf-bg{position:absolute; right:-22px; top:-14px; width:130px; opacity:.16}
+  .mk-head .big{font:550 30px/1 var(--serif); letter-spacing:-.01em; color:#fff}
+  .mk-head .sub{font:400 12px/1 var(--sans); color:#a8d8bd; margin-top:7px; letter-spacing:.02em}
+  .mk-stats{display:flex; gap:18px; margin-top:14px; position:relative}
+  .mk-stats .s b{display:block; font:550 17px/1 var(--serif); color:#fff}
+  .mk-stats .s span{font:400 10.5px/1 var(--sans); letter-spacing:.07em; text-transform:uppercase; color:#9fb6a6; margin-top:5px; display:block}
+
+  .mk-sort{display:flex; align-items:center; justify-content:space-between; margin:0 2px var(--s2)}
+  .mk-sort .lab{font:600 11px/1 var(--sans); letter-spacing:.14em; text-transform:uppercase; color:var(--slate)}
+  .mk-sort .pill{font:600 11px/1 var(--sans); color:var(--leaf); background:#e7f0e8; border-radius:999px; padding:6px 11px}
+
+  .row{
+    display:grid; grid-template-columns:1fr auto; gap:10px;
+    background:var(--paper); border:1px solid var(--hair); border-radius:var(--r-md);
+    padding:13px 13px; margin-bottom:10px; align-items:center;
+  }
+  .row .info{min-width:0}
+  .row .nm{display:flex; align-items:center; gap:8px}
+  .row .nm b{font:550 16px/1 var(--serif); letter-spacing:-.005em}
+  .row .nm .own{
+    width:19px; height:19px; border-radius:50%; flex:none;
+    font:600 10px/19px var(--sans); text-align:center; color:#fff;
+    background:linear-gradient(150deg,var(--leaf2),var(--leaf));
+  }
+  .row .sci{font:400 11.5px/1 var(--sans); font-style:italic; color:var(--slate); margin-top:3px}
+  .row .meta{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px}
+  .chip{
+    display:inline-flex; align-items:center; gap:4px;
+    font:600 11px/1 var(--sans); color:var(--ink);
+    background:var(--mist); border-radius:999px; padding:5px 8px;
+  }
+  .chip .c-amt{color:var(--clay); font-weight:600}
+  .chip.diff{background:#eef0e8; color:var(--leaf)}
+  .chip.diff.hard{background:#f6e9e3; color:var(--clay)}
+
+  /* sell score hero */
+  .ss{
+    width:74px; text-align:center; flex:none;
+    border-left:1px solid var(--hair); padding-left:12px;
+  }
+  .ss .ss-n{
+    font:550 34px/.9 var(--serif); letter-spacing:-.02em;
+  }
+  .ss .ss-l{font:600 9px/1 var(--sans); letter-spacing:.13em; text-transform:uppercase; color:var(--slate); margin-top:6px}
+  .ss .bars{display:flex; gap:3px; justify-content:center; margin-top:8px}
+  .ss .bars i{width:5px; height:14px; border-radius:2px; background:#e2e5da}
+  .ss.tier-hi  .ss-n{color:var(--leaf)}
+  .ss.tier-mid .ss-n{color:var(--gold)}
+  .ss.tier-lo  .ss-n{color:#a3aca0}
+  .ss.tier-hi  .bars i.on{background:var(--leaf)}
+  .ss.tier-mid .bars i.on{background:var(--gold)}
+  .ss.tier-lo  .bars i.on{background:#b9c0b4}
+
+  .foot{
+    text-align:center; font:400 11px/1.5 var(--sans); color:var(--slate);
+    padding:26px 24px 0;
+  }
+  .foot .sig{font:500 13px/1 var(--serif); color:var(--leaf); font-style:italic}
+</style>
+</head>
+<body>
+
+  <!-- ============ DIRECTION BANNER ============ -->
+  <div class="banner">
+    <div class="wrap">
+      <div class="kicker">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 13c0-4 0-6 3-9M7 13c0-4 0-6-3-9" stroke="#3F8A66" stroke-width="1.4" stroke-linecap="round"/><circle cx="7" cy="2.5" r="1.6" fill="#9fd9b8"/></svg>
+        Concept · Direction 3
+      </div>
+      <h1>Glasshouse <em>— daylight botanical</em></h1>
+      <p>A bright Scandinavian conservatory: warm bone-white surfaces, one living-green accent, and a terracotta value note. Where v9 went dark and v10 went pressed-herbarium, this leans clean and airy — generous whitespace, an opsz serif for headings and big numbers, and a signature “grow-line” range bar that sketches a sprig instead of a flat track.</p>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <!-- ============ SCREEN 1 — PLANT SUMMARY ============ -->
+    <div class="screen">
+      <div class="cap">Screen 1 · Plant Summary</div>
+      <div class="phone">
+        <div class="phone-pad">
+
+          <div class="appbar">
+            <div class="who"><div class="avatar">M</div><b>Monty</b></div>
+            <div class="seg"><button class="on">Summary</button><button>Detail</button></div>
+          </div>
+
+          <div class="hero">
+            <div class="hero-img">
+              <!-- monstera silhouette -->
+              <svg viewBox="0 0 360 148" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                <g fill="#ffffff" opacity="0.10">
+                  <path d="M250 150c-6-40 8-70 44-92-30 30-30 60-14 92z"/>
+                  <path d="M300 150c2-46 26-72 60-86-30 22-38 50-30 86z"/>
+                </g>
+                <g transform="translate(232,30)" fill="#ffffff" opacity="0.92">
+                  <path d="M60 0C28 6 4 30 0 64c-2 18 4 36 18 50 14-10 22-26 24-44 14 4 28 0 40-12 14-14 18-36 12-58-6 2-12 2-18 0 2-12-4-22-16 0zM18 50c8-2 16 2 18 12-8 2-16-2-18-12zm22 26c8-2 16 2 18 12-8 2-16-2-18-12zM44 20c8-2 16 2 18 12-8 2-16-2-18-12z" />
+                </g>
+                <path d="M250 130c8-26 0-50-16-70" stroke="#ffffff" stroke-width="2" opacity="0.5" fill="none" stroke-linecap="round"/>
+              </svg>
+              <div class="match"><span class="dot"></span>90% match</div>
+              <div class="hero-name">
+                <b>Monty</b>
+                <span>Swiss cheese plant · Monstera deliciosa</span>
+              </div>
+            </div>
+
+            <div class="hero-body">
+
+              <!-- VALUE BANNER -->
+              <div class="value">
+                <div class="v">
+                  <div class="lbl">✂️ Cuttings</div>
+                  <div class="amt">$8–20</div>
+                  <div class="score">value <b>7</b>/10</div>
+                </div>
+                <div class="div"></div>
+                <div class="v">
+                  <div class="lbl">🪴 Whole plant</div>
+                  <div class="amt">$40–90</div>
+                  <div class="score">value <b>8</b>/10</div>
+                </div>
+              </div>
+
+              <!-- CARE TILES -->
+              <div class="tiles">
+                <div class="tile">
+                  <div class="t-h">
+                    <svg class="t-ic" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.2" fill="#C99A2E"/><g stroke="#C99A2E" stroke-width="1.6" stroke-linecap="round"><path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21M5.6 5.6l1.7 1.7M16.7 16.7l1.7 1.7M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7"/></g></svg>
+                    <span class="t-l">Sun</span>
+                  </div>
+                  <div class="t-v">Bright indirect — east window</div>
+                </div>
+                <div class="tile">
+                  <div class="t-h">
+                    <svg class="t-ic" viewBox="0 0 24 24" fill="none"><path d="M4 16h16l-1.2 3a1 1 0 0 1-.95.7H6.15A1 1 0 0 1 5.2 19L4 16z" fill="#8a6a4a"/><path d="M6 13h12l-.5 2.2H6.5L6 13z" fill="#a07a52"/><circle cx="9" cy="9" r="1.3" fill="#3F8A66"/><circle cx="14" cy="7.5" r="1.3" fill="#3F8A66"/><circle cx="12.5" cy="11" r="1.1" fill="#2F6B4F"/></svg>
+                    <span class="t-l">Soil</span>
+                  </div>
+                  <div class="t-v">Chunky aroid mix</div>
+                </div>
+                <div class="tile">
+                  <div class="t-h">
+                    <svg class="t-ic" viewBox="0 0 24 24" fill="none"><path d="M12 3s6 6.6 6 11a6 6 0 1 1-12 0c0-4.4 6-11 6-11z" fill="#5b97c4"/><path d="M9 13.5a3 3 0 0 0 2.2 3.2" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity=".8"/></svg>
+                    <span class="t-l">Water</span>
+                  </div>
+                  <div class="t-v">When top 2 in. dry — weekly</div>
+                </div>
+                <div class="tile">
+                  <div class="t-h">
+                    <svg class="t-ic" viewBox="0 0 24 24" fill="none"><path d="M10 4.5a2 2 0 0 1 4 0v8.7a4 4 0 1 1-4 0V4.5z" fill="#cf7b46"/><circle cx="12" cy="16.5" r="2.6" fill="#fff"/><path d="M12 16.5V9" stroke="#cf7b46" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <span class="t-l">Temp</span>
+                  </div>
+                  <div class="t-v">65–80°F sweet spot</div>
+                </div>
+                <div class="tile wide">
+                  <div class="t-h">
+                    <svg class="t-ic" viewBox="0 0 24 24" fill="none"><path d="M5 14a4 4 0 0 1 1-7.5A4.5 4.5 0 0 1 14.5 6 3.5 3.5 0 0 1 18 13.8" stroke="#7fa9c9" stroke-width="1.6" stroke-linecap="round" fill="none"/><g stroke="#5b97c4" stroke-width="1.6" stroke-linecap="round"><path d="M8 17v2.5M12 17.5v2.5M16 17v2.5"/></g></svg>
+                    <span class="t-l">Humidity</span>
+                  </div>
+                  <div class="t-v">50–60% — average room is fine; it’ll thank you for a touch more</div>
+                </div>
+              </div>
+
+              <!-- LIGHT RANGE — signature grow-line -->
+              <div class="range-sec">
+                <div class="sec-h">Light range <span class="unit">min → thrives → max</span></div>
+                <div class="grow">
+                  <div class="grow-track">
+                    <svg viewBox="0 0 320 54" preserveAspectRatio="none" aria-hidden="true">
+                      <defs>
+                        <linearGradient id="lg" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0" stop-color="#cfd9cf"/>
+                          <stop offset="0.5" stop-color="#3F8A66"/>
+                          <stop offset="1" stop-color="#C99A2E"/>
+                        </linearGradient>
+                      </defs>
+                      <!-- the stem grows left(low) to right(bright) -->
+                      <path d="M8 44 C 90 44, 120 22, 160 22 S 250 14, 312 12" fill="none" stroke="url(#lg)" stroke-width="3.5" stroke-linecap="round"/>
+                      <!-- sprout leaves along the stem -->
+                      <g fill="#cfd9cf"><ellipse cx="40" cy="40" rx="8" ry="4" transform="rotate(-18 40 40)"/></g>
+                      <g fill="#3F8A66"><ellipse cx="160" cy="22" rx="10" ry="5" transform="rotate(-14 160 22)"/><ellipse cx="148" cy="30" rx="7" ry="3.6" transform="rotate(20 148 30)"/></g>
+                      <g fill="#C99A2E"><ellipse cx="300" cy="13" rx="9" ry="4.4" transform="rotate(-10 300 13)"/></g>
+                      <!-- node dots -->
+                      <circle cx="8" cy="44" r="4" fill="#cfd9cf" stroke="#fff" stroke-width="2"/>
+                      <circle cx="160" cy="22" r="6" fill="#C99A2E" stroke="#fff" stroke-width="2.5"/>
+                      <circle cx="312" cy="12" r="4" fill="#C99A2E" stroke="#fff" stroke-width="2"/>
+                    </svg>
+                  </div>
+                  <div class="grow-marks">
+                    <div class="m"><div class="tag">Min</div><div class="desc">Survives ~3 ft from a north window</div></div>
+                    <div class="m mid"><div class="tag">★ Thrives</div><div class="desc">Bright indirect, east window</div></div>
+                    <div class="m right"><div class="tag">Max</div><div class="desc">A few hrs direct morning sun</div></div>
+                  </div>
+                </div>
+
+                <!-- TEMPERATURE GAUGE -->
+                <div class="sec-h" style="margin-top:6px">Temperature <span class="unit">°F</span></div>
+                <div class="gauge">
+                  <div class="gauge-bar"><div class="gauge-band"></div></div>
+                  <div class="gauge-scale">
+                    <span class="end">50°</span>
+                    <span class="sweet">thrives 65–80°</span>
+                    <span class="end">90°</span>
+                  </div>
+                </div>
+              </div>
+
+            </div><!-- /hero-body -->
+          </div><!-- /hero -->
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SCREEN 2 — MARKETPLACE ============ -->
+    <div class="screen">
+      <div class="cap">Screen 2 · Family Marketplace</div>
+      <div class="phone">
+        <div class="phone-pad">
+
+          <div class="appbar" style="padding-bottom:16px">
+            <div class="who"><div class="avatar">F</div><b>Marketplace</b></div>
+            <div class="seg"><button class="on">Sell score</button><button>Newest</button></div>
+          </div>
+
+          <!-- COCKPIT HEADER -->
+          <div class="mk-head">
+            <svg class="leaf-bg" viewBox="0 0 100 100" fill="#9fd9b8" aria-hidden="true"><path d="M50 0C22 8 2 34 0 66c-2 18 6 30 18 34 10-18 14-26 14-44 14 6 30 2 44-12 16-16 18-30 12-44-6 2-12 2-18 0 2-10-6-22-20 0z"/></svg>
+            <div class="big">$182–$345</div>
+            <div class="sub">potential family value</div>
+            <div class="mk-stats">
+              <div class="s"><b>3</b><span>for sale</span></div>
+              <div class="s"><b>12</b><span>props rooting</span></div>
+              <div class="s"><b>9</b><span>top score</span></div>
+            </div>
+          </div>
+
+          <div class="mk-sort">
+            <span class="lab">Ranked easiest → most profitable</span>
+            <span class="pill">▼ score</span>
+          </div>
+
+          <!-- ROW 1 -->
+          <div class="row">
+            <div class="info">
+              <div class="nm"><b>Coiny</b><span class="own">M</span></div>
+              <div class="sci">Chinese money plant · Pilea peperomioides</div>
+              <div class="meta">
+                <span class="chip">✂️ 9 <span class="c-amt">$10–18</span></span>
+                <span class="chip">🪴 5 <span class="c-amt">$22–35</span></span>
+                <span class="chip diff">Easy prop</span>
+              </div>
+            </div>
+            <div class="ss tier-hi">
+              <div class="ss-n">9</div>
+              <div class="ss-l">Sell score</div>
+              <div class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+            </div>
+          </div>
+
+          <!-- ROW 2 -->
+          <div class="row">
+            <div class="info">
+              <div class="nm"><b>Monty</b><span class="own">M</span></div>
+              <div class="sci">Swiss cheese plant · Monstera deliciosa</div>
+              <div class="meta">
+                <span class="chip">✂️ 7 <span class="c-amt">$8–20</span></span>
+                <span class="chip">🪴 8 <span class="c-amt">$40–90</span></span>
+                <span class="chip diff">Easy prop</span>
+              </div>
+            </div>
+            <div class="ss tier-hi">
+              <div class="ss-n">8</div>
+              <div class="ss-l">Sell score</div>
+              <div class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+            </div>
+          </div>
+
+          <!-- ROW 3 -->
+          <div class="row">
+            <div class="info">
+              <div class="nm"><b>Queenie</b><span class="own" style="background:linear-gradient(150deg,#b07cc4,#7a4f97)">K</span></div>
+              <div class="sci">Velvet anthurium · Anthurium clarinervium</div>
+              <div class="meta">
+                <span class="chip">✂️ 4 <span class="c-amt">$25–45</span></span>
+                <span class="chip">🪴 9 <span class="c-amt">$120–220</span></span>
+                <span class="chip diff hard">Hard prop</span>
+              </div>
+            </div>
+            <div class="ss tier-lo">
+              <div class="ss-n">3.2</div>
+              <div class="ss-l">Sell score</div>
+              <div class="bars"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span class="sig">Rootwork — Glasshouse</span><br>
+      One concept page · best viewed at ~390px
+    </div>
+
+  </div>
+</body>
+</html>
