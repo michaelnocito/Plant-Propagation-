@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0f1c14" />
+<meta name="theme-color" content="#efe4cd" />
 <link rel="manifest" href="/manifest.json" />
 <!-- iOS home-screen install (Add to Home Screen → launches fullscreen) -->
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Rootwork" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
@@ -295,14 +295,31 @@
   @media (prefers-reduced-motion:no-preference){.card{animation:rise .35s ease}}
   @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
-  /* ============================================================
-     DESIGN REFRESH — "botanical journal, after dark"
-     (layered over the base styles; later rules win)
-     ============================================================ */
-  body{background:var(--ink-grad) no-repeat; background-attachment:scroll; min-height:100vh}
-  h1{font-size:30px; letter-spacing:.3px}
-  header p{letter-spacing:.2px}
-  .chip{box-shadow:0 3px 10px rgba(0,0,0,.3); border:2px solid rgba(255,255,255,.3)}
+  /* ================================================================
+     BOLD THEME — "Pressed Herbarium / Specimen Sheet"
+     Light parchment, botanical ink-green, one madder-red accent,
+     marketplace as an inventory ledger. (later rules win)
+     ================================================================ */
+  :root{
+    --paper:#f1e7d2; --paper2:#e8dcc0; --card:#fbf7ec;
+    --inkg:#22392b; --inkg2:#2f4d3a;            /* botanical ink-green */
+    --sepia:#8a7350; --sepia2:#6f5d3f;          /* muted labels */
+    --madder:#b1432b; --madder-d:#8f3621;       /* the single bold accent */
+    --rule:rgba(34,57,43,.22); --rule-soft:rgba(34,57,43,.1);
+    --sheet:0 1px 0 rgba(34,57,43,.04), 0 14px 30px -16px rgba(34,57,43,.42);
+  }
+  body{
+    color:var(--inkg); min-height:100vh; background-attachment:scroll;
+    background:
+      repeating-linear-gradient(0deg, rgba(34,57,43,.022) 0 1px, transparent 1px 27px),
+      radial-gradient(120% 85% at 50% -8%, #f6eedb 0%, #efe4cd 55%, #e7dbbf 100%);
+  }
+  h1{font-size:31px; color:var(--inkg); letter-spacing:.4px; font-weight:600}
+  header{align-items:center}
+  header p{color:var(--sepia); font-style:italic; letter-spacing:.2px}
+  .chip{border:2px solid var(--inkg); box-shadow:0 2px 7px rgba(34,57,43,.28)}
+  .status{color:var(--sepia)}
+  .err{color:var(--madder-d)}
 
   /* motion */
   button,.seg button,.modeToggle button,.filters button,nav.tabs button,.mrow,.pcard,.who-card,.gphoto{
@@ -311,81 +328,137 @@
   .view.on{animation:fade .28s ease}
   @keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 
-  /* cards & section headers */
-  .card{background:var(--card-grad); border:1px solid rgba(120,90,50,.18);
-    border-radius:var(--r-lg); box-shadow:var(--shadow)}
-  .card h2{font-size:24px; letter-spacing:.2px}
-  .sec-h{border-bottom:none; position:relative; padding-bottom:9px; font-size:16px; letter-spacing:.3px}
-  .sec-h::after{content:""; position:absolute; left:0; bottom:0; width:100%; height:1px;
-    background:linear-gradient(90deg,rgba(120,90,50,.5),rgba(120,90,50,0))}
-  .vh{font-size:23px; letter-spacing:.3px}
+  /* identify dropzone */
+  .shoot{background:var(--card); border:1.5px dashed var(--inkg2); color:var(--inkg2); box-shadow:var(--sheet)}
+  .shoot strong{color:var(--inkg)}
 
-  /* summary tiles + value banner (hero the money in honey-gold) */
-  .stile{background:linear-gradient(180deg,#e7dcc4,#e0d4ba); border:1px solid rgba(120,90,50,.14)}
-  .stile .sk{color:#6f5f44}
-  .svalue .sv-item{background:var(--darkcard); border:1px solid var(--hair);
-    box-shadow:var(--shadow-sm); position:relative; overflow:hidden}
-  .svalue .sv-item::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--gold)}
-  .svalue .sv-k{color:var(--sage); letter-spacing:.6px}
-  .svalue .sv-p{color:var(--gold); font-family:Georgia,serif; font-size:18px; letter-spacing:.2px}
+  /* card = mounted specimen sheet */
+  .card{background:var(--card); color:var(--inkg); border:1px solid var(--rule);
+    border-radius:7px; box-shadow:inset 0 0 0 1px rgba(34,57,43,.05), var(--sheet)}
+  .card h2{font-size:25px; color:var(--inkg); letter-spacing:.3px}
+  .card em{color:var(--sepia); font-style:italic}
+  /* section headers — engraved small-caps label + ledger rule */
+  .sec-h{font-family:"Iowan Old Style",Georgia,serif; color:var(--inkg2); font-weight:600;
+    font-size:13px; text-transform:uppercase; letter-spacing:2px; border-bottom:none;
+    padding-bottom:7px; position:relative}
+  .sec-h::after{content:""; position:absolute; left:0; right:0; bottom:0; height:2px;
+    background:linear-gradient(90deg,var(--inkg2) 0 26px, var(--rule) 26px)}
+  .vh{color:var(--inkg); font-size:26px; letter-spacing:.3px}
+  .mkt-sub{color:var(--sepia)}
 
-  /* signature range bars */
-  .rb-track{height:12px; background:linear-gradient(90deg,#7fa8cf,#e6d49a 50%,#dd9a63);
-    box-shadow:inset 0 1px 3px rgba(0,0,0,.22)}
-  .rb-band{height:18px; top:-3px; background:linear-gradient(180deg,#5bb04a,#3f8a33);
-    box-shadow:0 0 0 2px var(--parch),0 2px 7px rgba(63,138,51,.5)}
-  .lz-cell{background:linear-gradient(180deg,#e7dcc4,#e0d4ba); border:1px solid rgba(120,90,50,.14)}
-  .lz-cell.on{background:linear-gradient(180deg,#e2f0d7,#cfe6bf); border:1px solid #a9cf93;
-    box-shadow:0 0 0 1px rgba(79,123,58,.22), var(--shadow-sm)}
-  .lz-cell.on b{color:#3f7a2f}
-  .lz-cell.on b::before{content:"★ "; color:#5aa03f}
+  /* summary: specimen-label value + tiles */
+  .stile{background:var(--paper2); border:1px solid var(--rule)}
+  .stile .sk{color:var(--sepia2)} .stile .sv{color:var(--inkg)}
+  .svalue .sv-item{background:var(--paper2); border:1px solid var(--rule); box-shadow:none;
+    position:relative; overflow:hidden}
+  .svalue .sv-item::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--madder)}
+  .svalue .sv-k{color:var(--sepia2); letter-spacing:.8px}
+  .svalue .sv-p{color:var(--inkg); font-family:Georgia,serif; font-size:18px; font-weight:700}
+  .svalue .sv-s{color:var(--sepia)}
 
-  /* marketplace cockpit + sell-score "coin" */
-  .mstats{gap:10px}
-  .mstat{background:var(--darkcard); border:1px solid var(--hair); box-shadow:var(--shadow-sm);
-    padding:13px 8px; position:relative; overflow:hidden}
-  .mstat::before{content:""; position:absolute; top:0; left:0; right:0; height:2px;
-    background:linear-gradient(90deg,var(--gold),transparent)}
-  .mstat .mn{color:var(--gold); font-size:20px}
-  .mrow{background:var(--darkcard); border:1px solid var(--hair); border-radius:16px;
-    box-shadow:var(--shadow-sm); padding:12px 13px}
-  .mrow .mph{border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.35)}
+  /* range bars — engraved scales */
+  .rb-track{height:12px; background:linear-gradient(90deg,#88add0,#e3cf94 50%,#cf8a55);
+    box-shadow:inset 0 1px 2px rgba(34,57,43,.18)}
+  .rb-band{height:18px; top:-3px; background:linear-gradient(180deg,#3f7a3a,#2c5e2a);
+    box-shadow:0 0 0 2px var(--card),0 2px 6px rgba(44,94,42,.4)}
+  .rb-ends{color:var(--sepia)} .rb-mid{color:var(--inkg)} .rb-note{color:var(--sepia2)}
+  .lz-cell{background:var(--paper2); border:1px solid var(--rule)}
+  .lz-cell b{color:var(--sepia2)} .lz-cell span{color:var(--inkg)}
+  .lz-cell.on{background:#e3eed4; border:1px solid #a9c992; box-shadow:0 0 0 1px rgba(47,77,58,.18)}
+  .lz-cell.on b{color:var(--inkg2)}
+  .lz-cell.on b::before{content:"✿ "; color:var(--madder)}
+  .caresub{color:var(--sepia2)}
+  .care .c b{color:var(--sepia2)} .care .c span{color:var(--inkg)}
+  .soilopt{background:var(--paper2)} .soilopt b{color:var(--madder-d)} .soilopt span{color:var(--inkg)}
+
+  /* resale ratings (light) */
+  .rcard{background:var(--paper2); color:var(--inkg); border:1px solid var(--rule)}
+  .rcard .rt{color:var(--madder-d); letter-spacing:.8px}
+  .rcard .rs{color:var(--inkg); font-family:Georgia,serif} .rcard .rs small{color:var(--sepia)}
+  .rcard .price{color:var(--inkg); font-weight:700} .rcard .meta{color:var(--sepia)} .rcard .notes{color:var(--inkg2)}
+
+  /* MARKETPLACE = inventory ledger */
+  .mstats{gap:0; border:1px solid var(--rule); border-radius:8px; overflow:hidden; background:var(--paper2)}
+  .mstat{background:transparent; border:none; border-right:1px solid var(--rule); box-shadow:none; padding:14px 8px}
+  .mstat:last-child{border-right:none}
+  .mstat .mn{color:var(--inkg); font-size:21px; font-family:Georgia,serif}
+  .mstat .ml{color:var(--sepia2)}
+  .mrow{background:var(--card); border:1px solid var(--rule); border-radius:8px; box-shadow:var(--sheet); padding:12px 13px}
+  .mrow .mph{border-radius:4px; border:1px solid var(--rule); box-shadow:none}
+  .mrow .mnoph{border-radius:4px; background:var(--paper2); color:var(--inkg2)}
+  .mrow .mname{color:var(--inkg)} .mrow .msp{color:var(--sepia)}
+  .mrow .mtags{color:var(--inkg2)} .mrow .mtags b{color:var(--inkg); font-weight:700}
+  .mrow .ease-easy{color:#3f7a3a} .mrow .ease-moderate{color:#b07d1e} .mrow .ease-hard{color:var(--madder)}
   .mrow .opp{display:grid; place-items:center; gap:3px}
-  .mrow .opp .on{color:#0e1a12; font-size:17px; width:46px; height:46px; border-radius:50%;
-    display:grid; place-items:center;
-    background:radial-gradient(circle at 35% 30%,#f1d28a,var(--gold-deep));
-    box-shadow:inset 0 0 0 2px rgba(255,255,255,.32),0 3px 8px rgba(0,0,0,.35)}
+  .mrow .opp .on{   /* wax-seal sell-score stamp */
+    color:#f6ecd9; font-family:Georgia,serif; font-weight:700; font-size:17px;
+    width:48px; height:48px; border-radius:50%; display:grid; place-items:center;
+    background:radial-gradient(circle at 35% 30%,#c2563b,var(--madder-d));
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.18), inset 0 0 10px rgba(0,0,0,.22), 0 2px 5px rgba(0,0,0,.22)}
+  .mrow .opp .ol{color:var(--sepia2)}
+  .mrow.sold{opacity:.5}
+  .soldtag{background:var(--sepia); color:var(--paper)}
 
   /* filter / sort chips */
-  .filters button{background:rgba(20,33,24,.7)}
-  .filters button.on{background:var(--sage); color:#0e1a12; border-color:var(--sage);
-    box-shadow:0 2px 8px rgba(127,160,122,.35)}
+  .filters button{background:var(--paper2); border:1px solid var(--rule); color:var(--sepia2)}
+  .filters button.on{background:var(--inkg); color:var(--paper); border-color:var(--inkg);
+    box-shadow:0 2px 6px rgba(34,57,43,.3)}
 
-  /* plant grid cards */
-  .pcard{background:linear-gradient(180deg,#17291c,#101b13); border:1px solid var(--hair);
-    box-shadow:var(--shadow-sm); border-radius:16px}
+  /* plant grid specimen cards */
+  .pcard{background:var(--card); border:1px solid var(--rule); box-shadow:var(--sheet); border-radius:8px}
+  .pcard .ph,.pcard .noph{background:var(--paper2)} .pcard .noph{color:var(--inkg2)}
+  .pcard .nm{color:var(--inkg)} .pcard .sp{color:var(--sepia)}
+  .pcard .cat{color:var(--inkg2); border:1px solid var(--rule)}
+  .pcard .mkt{color:var(--madder-d); border:1px solid rgba(177,67,43,.4)}
 
-  /* primary buttons + toggles */
-  .savebtn{box-shadow:0 8px 18px -8px rgba(192,112,58,.65); letter-spacing:.2px}
-  .modeToggle{background:#e3d8bf; box-shadow:inset 0 1px 2px rgba(0,0,0,.07)}
-  .modeToggle button.on{box-shadow:0 2px 6px rgba(0,0,0,.25)}
-  .seal{box-shadow:inset 0 0 0 3px rgba(255,255,255,.3),0 6px 16px rgba(0,0,0,.3)}
+  /* buttons / toggles / manage / forms */
+  .savebtn{background:var(--inkg); color:var(--paper); box-shadow:0 6px 14px -6px rgba(34,57,43,.5); letter-spacing:.3px}
+  .savebtn.alt{background:var(--madder); color:#fbf3e6}
+  .mktbtn{background:var(--card); border:1px solid var(--madder); color:var(--madder-d)}
+  .mktbtn.on{background:var(--madder); color:#fbf3e6}
+  .modeToggle{background:var(--paper2); border:1px solid var(--rule); box-shadow:none}
+  .modeToggle button{color:var(--sepia2)} .modeToggle button.on{background:var(--inkg); color:var(--paper)}
+  .seg{background:var(--card); border:1px solid var(--rule)}
+  .seg button{color:var(--sepia2)} .seg button.on{background:var(--inkg); color:var(--paper)}
+  .savedrow{background:var(--paper2)} .savedrow .who{color:var(--sepia2)} .savedrow .who b{color:var(--inkg)}
+  select,.nick{background:var(--card); border:1px solid var(--rule); color:var(--inkg)}
+  .pickline label{color:var(--sepia2)}
+  .manage{border-top:1px solid var(--rule)} .mline{color:var(--inkg)}
+  .stepper{background:var(--card); border:1px solid var(--rule)}
+  .stepper button{background:var(--paper2); color:var(--inkg)} .stepper b{color:var(--inkg)}
+  .mgbtn{background:var(--card); border:1px solid var(--inkg2); color:var(--inkg2)}
+  .mgbtn.on{background:var(--inkg); color:var(--paper); border-color:var(--inkg)}
+  .delbtn{color:var(--madder-d)}
+  .exportbtn{background:var(--paper2); border:1px solid var(--rule); color:var(--inkg2)}
+  .links a{color:var(--inkg); border-bottom-color:var(--madder)}
+  .issue a{color:var(--madder-d); border-bottom-color:var(--madder)}
+  .tag{background:var(--paper2); color:var(--inkg2)}
 
-  /* bottom tab bar — active indicator */
-  nav.tabs{background:#0c160f; border-top:1px solid var(--hair); backdrop-filter:none; -webkit-backdrop-filter:none}
-  nav.tabs button{position:relative; padding-top:11px; letter-spacing:.2px}
+  /* photo gallery */
+  .gal .gphoto{background:var(--paper2); border:1px solid var(--rule)}
+  .gal .gphoto .cv{background:var(--madder); color:#fbf3e6}
+  .gal .gadd{background:var(--paper2); border:1px dashed var(--inkg2); color:var(--sepia2)}
+  .galtools a{color:var(--madder-d); border-bottom-color:var(--madder)}
+  .galempty{color:var(--sepia2)}
+
+  /* bottom tabs = deep ink-green spine, madder indicator */
+  nav.tabs{background:var(--inkg); border-top:1px solid rgba(0,0,0,.25); backdrop-filter:none; -webkit-backdrop-filter:none}
+  nav.tabs button{position:relative; padding-top:11px; letter-spacing:.2px; color:rgba(241,231,210,.62)}
   nav.tabs button svg{stroke-width:1.7}
+  nav.tabs button.on{color:#f4ead0}
   nav.tabs button.on svg{transform:translateY(-1px) scale(1.06)}
   nav.tabs button.on::before{content:""; position:absolute; top:0; left:50%; transform:translateX(-50%);
-    width:22px; height:3px; border-radius:0 0 4px 4px; background:var(--sage)}
+    width:24px; height:3px; border-radius:0 0 4px 4px; background:var(--madder)}
 
-  /* picker */
-  .picker{background:var(--ink-grad)}
-  .who-card{background:var(--darkcard); border:1px solid var(--hair); box-shadow:var(--shadow)}
-  .who-card .av{box-shadow:0 4px 14px rgba(0,0,0,.35)}
+  /* picker — dramatic ink-green ground, paper specimens */
+  .picker{background:radial-gradient(120% 80% at 50% 0%, #2a4634, #1c3024 60%, #16271d)}
+  .picker h2{color:#f4ead0} .picker p{color:rgba(244,234,208,.72)}
+  .who-card{background:var(--card); border:1px solid var(--rule); box-shadow:0 18px 38px -14px rgba(0,0,0,.5)}
+  .who-card span{color:var(--inkg)}
 
-  /* friendlier empty states */
-  .empty svg{width:52px; height:52px; opacity:.55; display:block; margin:0 auto 10px}
+  /* empty states */
+  .empty{color:var(--sepia2)}
+  .empty svg{width:52px; height:52px; opacity:.5; display:block; margin:0 auto 10px; stroke:var(--inkg2)}
 
   @media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important}}
 </style>
