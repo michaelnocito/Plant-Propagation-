@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#efe4cd" />
+<meta name="theme-color" content="#ece0c7" />
 <link rel="manifest" href="/manifest.json" />
 <!-- iOS home-screen install (Add to Home Screen → launches fullscreen) -->
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -301,18 +301,18 @@
      marketplace as an inventory ledger. (later rules win)
      ================================================================ */
   :root{
-    --paper:#f1e7d2; --paper2:#e8dcc0; --card:#fbf7ec;
-    --inkg:#22392b; --inkg2:#2f4d3a;            /* botanical ink-green */
-    --sepia:#8a7350; --sepia2:#6f5d3f;          /* muted labels */
-    --madder:#b1432b; --madder-d:#8f3621;       /* the single bold accent */
-    --rule:rgba(34,57,43,.22); --rule-soft:rgba(34,57,43,.1);
-    --sheet:0 1px 0 rgba(34,57,43,.04), 0 14px 30px -16px rgba(34,57,43,.42);
+    --paper:#efe5cf; --paper2:#e5d8bb; --card:#f9f3e6;
+    --inkg:#3d4a37; --inkg2:#46533b;            /* soft earthy sage-olive */
+    --sepia:#836a45; --sepia2:#5f4d30;          /* warm browns */
+    --madder:#bd6a45; --madder-d:#9c5232;       /* terracotta accent */
+    --rule:rgba(92,72,46,.24); --rule-soft:rgba(92,72,46,.12);
+    --sheet:0 1px 0 rgba(70,58,40,.05), 0 14px 30px -16px rgba(70,58,40,.4);
   }
   body{
     color:var(--inkg); min-height:100vh; background-attachment:scroll;
     background:
-      repeating-linear-gradient(0deg, rgba(34,57,43,.022) 0 1px, transparent 1px 27px),
-      radial-gradient(120% 85% at 50% -8%, #f6eedb 0%, #efe4cd 55%, #e7dbbf 100%);
+      repeating-linear-gradient(0deg, rgba(92,72,46,.025) 0 1px, transparent 1px 27px),
+      radial-gradient(120% 85% at 50% -8%, #f4ecd7 0%, #ece0c7 55%, #e3d6b8 100%);
   }
   h1{font-size:31px; color:var(--inkg); letter-spacing:.4px; font-weight:600}
   header{align-items:center}
@@ -359,12 +359,12 @@
   /* range bars — engraved scales */
   .rb-track{height:12px; background:linear-gradient(90deg,#88add0,#e3cf94 50%,#cf8a55);
     box-shadow:inset 0 1px 2px rgba(34,57,43,.18)}
-  .rb-band{height:18px; top:-3px; background:linear-gradient(180deg,#3f7a3a,#2c5e2a);
-    box-shadow:0 0 0 2px var(--card),0 2px 6px rgba(44,94,42,.4)}
+  .rb-band{height:18px; top:-3px; background:linear-gradient(180deg,#6f8456,#506239);
+    box-shadow:0 0 0 2px var(--card),0 2px 6px rgba(80,98,57,.4)}
   .rb-ends{color:var(--sepia)} .rb-mid{color:var(--inkg)} .rb-note{color:var(--sepia2)}
   .lz-cell{background:var(--paper2); border:1px solid var(--rule)}
   .lz-cell b{color:var(--sepia2)} .lz-cell span{color:var(--inkg)}
-  .lz-cell.on{background:#e3eed4; border:1px solid #a9c992; box-shadow:0 0 0 1px rgba(47,77,58,.18)}
+  .lz-cell.on{background:#e7ead0; border:1px solid #b8bd93; box-shadow:0 0 0 1px rgba(111,132,86,.2)}
   .lz-cell.on b{color:var(--inkg2)}
   .lz-cell.on b::before{content:"✿ "; color:var(--madder)}
   .caresub{color:var(--sepia2)}
@@ -388,13 +388,13 @@
   .mrow .mnoph{border-radius:4px; background:var(--paper2); color:var(--inkg2)}
   .mrow .mname{color:var(--inkg)} .mrow .msp{color:var(--sepia)}
   .mrow .mtags{color:var(--inkg2)} .mrow .mtags b{color:var(--inkg); font-weight:700}
-  .mrow .ease-easy{color:#3f7a3a} .mrow .ease-moderate{color:#b07d1e} .mrow .ease-hard{color:var(--madder)}
+  .mrow .ease-easy{color:#566e3e} .mrow .ease-moderate{color:#946c2a} .mrow .ease-hard{color:var(--madder-d)}
   .mrow .opp{display:grid; place-items:center; gap:3px}
   .mrow .opp .on{   /* wax-seal sell-score stamp */
     color:#f6ecd9; font-family:Georgia,serif; font-weight:700; font-size:17px;
     width:48px; height:48px; border-radius:50%; display:grid; place-items:center;
-    background:radial-gradient(circle at 35% 30%,#c2563b,var(--madder-d));
-    box-shadow:inset 0 0 0 2px rgba(255,255,255,.18), inset 0 0 10px rgba(0,0,0,.22), 0 2px 5px rgba(0,0,0,.22)}
+    background:radial-gradient(circle at 35% 30%,#cd8259,var(--madder-d));
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.2), inset 0 0 10px rgba(0,0,0,.18), 0 2px 5px rgba(0,0,0,.2)}
   .mrow .opp .ol{color:var(--sepia2)}
   .mrow.sold{opacity:.5}
   .soldtag{background:var(--sepia); color:var(--paper)}
@@ -451,11 +451,16 @@
     width:24px; height:3px; border-radius:0 0 4px 4px; background:var(--madder)}
 
   /* picker — dramatic ink-green ground, paper specimens */
-  .picker{background:radial-gradient(120% 80% at 50% 0%, #2a4634, #1c3024 60%, #16271d)}
+  .picker{background:radial-gradient(120% 80% at 50% 0%, #45503a, #34372a 60%, #2a271d)}
   .picker h2{color:#f4ead0} .picker p{color:rgba(244,234,208,.72)}
   .who-card{background:var(--card); border:1px solid var(--rule); box-shadow:0 18px 38px -14px rgba(0,0,0,.5)}
   .who-card span{color:var(--inkg)}
 
+  /* soften remaining bold-green accents to sage */
+  .dx.healthy .dot{background:#6f8456}
+  .dx.healthy{background:#e7ead0; border-color:#c2c79f}
+  .sev.low{background:#6f8456}
+  .pcard .cat{color:var(--inkg2)}
   /* empty states */
   .empty{color:var(--sepia2)}
   .empty svg{width:52px; height:52px; opacity:.5; display:block; margin:0 auto 10px; stroke:var(--inkg2)}
