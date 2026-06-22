@@ -497,6 +497,19 @@ async def family_soil():
         return [_soil_out(sp) for sp in rows]
 
 
+@app.get("/soil/market", response_model=list[SoilPackOut])
+async def market_soil():
+    """Soil batches listed on the marketplace (both owners)."""
+    async with Session() as s:
+        rows = (
+            await s.execute(
+                select(SoilPack).options(selectinload(SoilPack.owner))
+                .where(SoilPack.in_market.is_(True)).order_by(SoilPack.created_at.desc())
+            )
+        ).scalars().all()
+        return [_soil_out(sp) for sp in rows]
+
+
 @app.patch("/soil/{soil_id}", response_model=SoilPackOut)
 async def update_soil(soil_id: int, body: SoilPackPatch, x_user: str | None = Header(default=None)):
     async with Session() as s:

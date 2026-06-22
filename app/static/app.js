@@ -460,6 +460,7 @@ function pcard(p) {
 
 /* ---------- marketplace ---------- */
 let marketRows = [];
+let marketSoil = [];
 let marketSort = "opp";
 let showSold = false;
 const EASE = { easy: 1, moderate: 0.6, hard: 0.35 };
@@ -488,17 +489,14 @@ function metrics(p) {
 async function loadMarket() {
   const list = $("market-list");
   list.innerHTML = `<div class="empty">Loading…</div>`;
-  try {
-    marketRows = await (await fetch("/plants/market")).json();
-  } catch (e) {
-    marketRows = [];
-  }
+  try { marketRows = await (await fetch("/plants/market")).json(); } catch (e) { marketRows = []; }
+  try { marketSoil = await (await fetch("/soil/market")).json(); } catch (e) { marketSoil = []; }
   drawMarket();
 }
 
 function drawMarket() {
   const sortEl = $("market-sort"), list = $("market-list");
-  const soldCount = marketRows.filter((p) => p.sold).length;
+  const soldCount = marketRows.filter((p) => p.sold).length + marketSoil.filter((s) => s.sold).length;
   sortEl.innerHTML =
     MSORTS.map(([k, l]) => `<button data-s="${k}" class="${marketSort === k ? "on" : ""}">${l}</button>`).join("") +
     `<button data-toggle="sold" class="${showSold ? "on" : ""}">${showSold ? "Hide sold" : `Show sold${soldCount ? ` (${soldCount})` : ""}`}</button>`;
@@ -506,27 +504,28 @@ function drawMarket() {
   const tog = sortEl.querySelector("button[data-toggle]");
   if (tog) tog.onclick = () => { showSold = !showSold; drawMarket(); };
 
-  if (!marketRows.length) {
-    list.innerHTML = emptyState("Nothing listed yet.<br>Open a plant and tap <b>List on Marketplace</b> (or use <b>Save &amp; list</b> when saving).");
+  if (!marketRows.length && !marketSoil.length) {
+    list.innerHTML = emptyState("Nothing listed yet.<br>List a plant (or soil batch) on the Marketplace.");
     return;
   }
 
-  // running totals from the AVAILABLE (unsold) listings
+  // running totals from AVAILABLE (unsold) listings — plants + soil
   const avail = marketRows.filter((p) => !p.sold);
+  const availSoil = marketSoil.filter((s) => !s.sold);
   let lo = 0, hi = 0, props = 0;
   avail.forEach((p) => {
     const a = p.ai_result || {};
     const [mn, mx] = parseRange((a.established && a.established.est_price_range) || (a.marketability && a.marketability.est_price_range));
-    lo += mn;
-    hi += mx;
-    props += p.props_in_progress || 0;
+    lo += mn; hi += mx; props += p.props_in_progress || 0;
   });
+  availSoil.forEach((s) => { const [mn, mx] = parseRange((s.market || {}).est_price_range); lo += mn; hi += mx; });
   const stats = `<div class="mstats">
     <div class="mstat"><div class="mn">$${Math.round(lo)}–$${Math.round(hi)}</div><div class="ml">potential value</div></div>
-    <div class="mstat"><div class="mn">${avail.length}</div><div class="ml">for sale</div></div>
+    <div class="mstat"><div class="mn">${avail.length + availSoil.length}</div><div class="ml">for sale</div></div>
     <div class="mstat"><div class="mn">${props}</div><div class="ml">props rooting</div></div>
   </div>`;
 
+  // plants
   const pool = showSold ? marketRows : avail;
   const rows = pool.map((p) => ({ p, x: metrics(p) }));
   const cmp = {
@@ -535,9 +534,35 @@ function drawMarket() {
     plant: (a, b) => b.x.estPrice - a.x.estPrice || b.x.estScore - a.x.estScore,
     easy: (a, b) => b.x.ease - a.x.ease || Math.max(b.x.propScore, b.x.estScore) - Math.max(a.x.propScore, a.x.estScore),
   }[marketSort];
-  rows.sort((a, b) => a.p.sold - b.p.sold || cmp(a, b)); // sold ones sink to the bottom
-  list.innerHTML = stats + (rows.length ? rows.map(({ p, x }) => mrow(p, x)).join("") : `<div class="empty">Nothing for sale right now.</div>`);
-  list.querySelectorAll(".mrow").forEach((el, i) => (el.onclick = () => showResult(rows[i].p.ai_result, rows[i].p, rows[i].p.thumbnail)));
+  rows.sort((a, b) => a.p.sold - b.p.sold || cmp(a, b));
+  const plantHTML = rows.map(({ p, x }) => mrow(p, x)).join("");
+
+  // soil mixes
+  const soilPool = (showSold ? marketSoil : availSoil).slice();
+  soilPool.sort((a, b) => (a.sold - b.sold) || ((b.market || {}).score || 0) - ((a.market || {}).score || 0));
+  const soilHTML = soilPool.length ? `<div class="rsub" style="margin:18px 0 8px">Soil mixes</div>` + soilPool.map(soilMarketRow).join("") : "";
+
+  const body = plantHTML + soilHTML;
+  list.innerHTML = stats + (body || `<div class="empty">Nothing for sale right now.</div>`);
+  list.querySelectorAll(".mrow[data-soil]").forEach((el) => (el.onclick = () => {
+    const sp = marketSoil.find((s) => s.id == el.dataset.soil);
+    if (sp) openSoil(sp);
+  }));
+  [...list.querySelectorAll(".mrow:not([data-soil])")].forEach((el, i) =>
+    (el.onclick = () => showResult(rows[i].p.ai_result, rows[i].p, rows[i].p.thumbnail)));
+}
+
+function soilMarketRow(sp) {
+  const m = sp.market || {}, owner = memberBy(sp.owner);
+  const img = sp.thumbnail ? `<img class="mph" src="${sp.thumbnail}" alt="">` : `<div class="mnoph">🟫</div>`;
+  return `<div class="mrow soil${sp.sold ? " sold" : ""}" data-soil="${sp.id}">${img}
+    <div>
+      <div class="mname">${esc(sp.name)} <span class="owndot" style="background:${owner.color}" title="${esc(owner.display_name)}">${esc((owner.display_name[0] || "?").toUpperCase())}</span>${sp.sold ? ` <span class="soldtag">Sold</span>` : ""}</div>
+      <div class="msp">Soil mix · ${esc(sp.size || "")}</div>
+      <div class="mtags"><span>💲 <b>${esc(m.est_price_range || "—")}</b></span>${m.demand ? `<span>${esc(cap(m.demand))} demand</span>` : ""}</div>
+    </div>
+    <div class="opp"><div class="on">${(m.score || "–")}</div><div class="ol">sell score</div></div>
+  </div>`;
 }
 
 function mrow(p, x) {
@@ -1053,7 +1078,7 @@ async function makePack(key) {
   const btn = document.querySelector(`[data-make="${key}"]`);
   if (btn) { btn.disabled = true; btn.textContent = "Mixing & pricing…"; }
   const pack = await postSoil({
-    name: r.name, recipe_key: r.key, size: "1 quart",
+    name: r.name, recipe_key: r.key, size: "1 Quart",
     recipe: { ingredients: r.ingredients, suits: r.suits }, visibility: "private", in_market: false,
   });
   if (btn) { btn.disabled = false; btn.textContent = "＋ Make a batch from this"; }
@@ -1063,7 +1088,7 @@ async function newCustomPack() {
   if (!me) return showPicker();
   const name = prompt("Name this mix (e.g. 'My custom aroid blend'):");
   if (!name) return;
-  const pack = await postSoil({ name, recipe_key: "custom", size: "1 quart", recipe: {}, visibility: "private", in_market: false });
+  const pack = await postSoil({ name, recipe_key: "custom", size: "1 Quart", recipe: {}, visibility: "private", in_market: false });
   if (pack) openSoil(pack);
 }
 
@@ -1117,17 +1142,48 @@ async function soilDelete() {
   await fetch("/soil/" + currentSoil.id, { method: "DELETE", headers: { "X-User": me } });
   closeSoil();
 }
+const SOIL_SIZES = ["1 Quart", "2 Quarts", "3 Quarts", "4 Quarts", "1 Gallon", "2 Gallons", "3 Gallons", "4 Gallons"];
+function sizeToGallons(size) {
+  const s = String(size || "").toLowerCase();
+  const n = parseFloat(s) || 1;
+  if (s.includes("gallon")) return n;
+  return n * 0.25; // quarts (default)
+}
+function perGallon(priceRange, size) {
+  const g = sizeToGallons(size);
+  const [a, b] = parseRange(priceRange);
+  if (!g || !b) return "";
+  return a === b ? money(a / g) : `${money(a / g)}–${money(b / g)}`;
+}
+async function soilReappraise() {
+  try {
+    const r = await fetch("/soil/appraise", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: currentSoil.name, size: currentSoil.size, recipe: currentSoil.recipe }),
+    });
+    if (r.ok) await soilPatch({ market: await r.json() });
+  } catch (e) { /* keep value */ }
+}
+async function soilSizeChanged(size) {
+  const um = $("soilUpdating");
+  if (um) um.textContent = "Updating value for the new size…";
+  await soilPatch({ size }, false);
+  await soilReappraise(); // re-renders with the size-correct price + $/gal
+}
+
 function renderSoilDetail() {
   const sp = currentSoil, m = sp.market || {}, rec = sp.recipe || {}, mine = sp.owner === me, owner = memberBy(sp.owner);
+  const pg = perGallon(m.est_price_range, sp.size);
   const ings = (rec.ingredients || []).map((i) => `<div class="ing"><span>${esc(i.name)}</span><b>${esc(i.parts || "")}</b></div>`).join("");
   const suits = (rec.suits || []).map((s) => `<span>${esc(s)}</span>`).join("");
   let html = `<h2 class="vh" style="margin:2px 0 2px">${esc(sp.name)}</h2>
     <div class="ssz" style="margin-bottom:12px">${esc(sp.size || "")} · by ${esc(owner.display_name)}</div>`;
   if (sp.thumbnail) html += `<img src="${sp.thumbnail}" style="width:100%;max-height:240px;object-fit:cover;border-radius:12px;border:1px solid var(--rule)" alt="">`;
   html += `<div class="rcard" style="margin-top:14px"><div class="rh"><span class="rt">Market value</span><span class="rs">${m.score ?? "–"}<small>/10</small></span></div>
-    <div class="price">${esc(m.est_price_range || "—")}</div>
+    <div class="price">${esc(m.est_price_range || "—")}${pg ? ` <span style="color:var(--sepia);font-size:13px;font-weight:400">≈ ${pg}/gal</span>` : ""}</div>
     <div class="meta">${m.demand ? esc(cap(m.demand)) + " demand" : ""}</div>
-    ${m.sell_notes ? `<div class="notes">${esc(m.sell_notes)}</div>` : ""}</div>`;
+    ${m.sell_notes ? `<div class="notes">${esc(m.sell_notes)}</div>` : ""}
+    <div class="ssz" id="soilUpdating" style="margin-top:6px"></div></div>`;
   if (ings || suits) {
     html += `<div class="sec"><h3 class="sec-h">Recipe</h3>${ings}${suits ? `<div class="rsub">Good for</div><div class="suits">${suits}</div>` : ""}</div>`;
   }
@@ -1135,7 +1191,7 @@ function renderSoilDetail() {
     html += `<div class="savedrow" style="margin-top:16px">
       <div class="who">Manage</div>
       <div class="seg" id="soilVis"><button data-v="private" class="${sp.visibility === "private" ? "on" : ""}">Private</button><button data-v="family" class="${sp.visibility === "family" ? "on" : ""}">Family</button></div>
-      <input class="nick" id="soilSize" placeholder="Size (e.g. 2 qt bag)" value="${esc(sp.size)}" />
+      <div class="pickline" style="margin-top:11px"><label>Bag size</label><select id="soilSize">${SOIL_SIZES.map((s) => `<option ${sp.size === s ? "selected" : ""}>${s}</option>`).join("")}</select></div>
       <button class="mktbtn ${sp.in_market ? "on" : ""}" id="soilMkt">${sp.in_market ? "✓ Listed on Marketplace" : "＋ List on Marketplace"}</button>
       <div class="mline2"><button class="mgbtn ${sp.sold ? "on" : ""}" id="soilSold">${sp.sold ? "↩ Mark available" : "✓ Mark as sold"}</button></div>
       <div class="mline2"><button class="link" id="soilPhoto">${sp.thumbnail ? "Change photo" : "Add photo"}</button></div>
@@ -1145,7 +1201,7 @@ function renderSoilDetail() {
   $("soilBody").innerHTML = html;
   if (mine) {
     $("soilVis").querySelectorAll("button").forEach((b) => (b.onclick = () => soilPatch({ visibility: b.dataset.v })));
-    $("soilSize").onblur = (e) => soilPatch({ size: e.target.value }, false);
+    $("soilSize").onchange = (e) => soilSizeChanged(e.target.value);
     $("soilMkt").onclick = () => soilPatch({ in_market: !currentSoil.in_market });
     $("soilSold").onclick = () => soilPatch({ sold: !currentSoil.sold });
     $("soilPhoto").onclick = () => $("soilPhotoInput").click();
