@@ -6,17 +6,18 @@ import zipfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException, UploadFile
+from fastapi import FastAPI, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from .claude import appraise_soil, enrich
+from .claude import appraise_plant, appraise_soil, diagnose_plant, enrich_core
 from .db import MEMBERS, Photo, Plant, Session, SoilPack, User, get_user, init_db
 from .models import (
     CATEGORIES,
     VISIBILITIES,
+    AppraiseIn,
     PhotoIn,
     PhotoOut,
     PhotoPatch,
@@ -75,11 +76,32 @@ async def propagate(file: UploadFile):
     except Exception as e:  # noqa: BLE001
         raise HTTPException(502, f"ID failed: {e}") from e
     try:
-        result = await enrich(species, common, data, file.content_type)
+        result = await enrich_core(species, common)  # fast: care + propagation + edible (no pricing/diagnosis)
     except Exception as e:  # noqa: BLE001
         raise HTTPException(502, f"Enrich failed: {e}") from e
     result.confidence = round(score, 2)
     return result
+
+
+@app.post("/appraise")
+async def appraise(body: AppraiseIn):
+    """On-demand resale pricing (cuttings + whole plant) — fast, no photo."""
+    try:
+        return await appraise_plant(body.species, body.common_name)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"Appraise failed: {e}") from e
+
+
+@app.post("/diagnose")
+async def diagnose(file: UploadFile, species: str = Form(...), common_name: str = Form("")):
+    """On-demand health check from a photo."""
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(400, "Send an image.")
+    data = await file.read()
+    try:
+        return await diagnose_plant(species, common_name, data, file.content_type)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"Diagnose failed: {e}") from e
 
 
 # ---- household + saved plants ----
@@ -200,6 +222,8 @@ async def update_plant(plant_id: int, body: PlantPatch, x_user: str | None = Hea
             p.cost = max(0.0, body.cost)
         if body.thumbnail is not None:
             p.thumbnail = body.thumbnail
+        if body.ai_result is not None:
+            p.ai_result = json.dumps(body.ai_result)
         await s.commit()
         await s.refresh(p, ["owner"])
         return _out(p)

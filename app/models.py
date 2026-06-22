@@ -91,10 +91,11 @@ class PropResult(BaseModel):
     steps: list[str]
     diagram_svg: str
     care: Care
-    diagnosis: Diagnosis
     edible: Edible
-    marketability: Marketability  # cuttings / propagation resale
-    established: EstablishedResale  # whole-plant resale
+    # filled on-demand (kept out of the initial import for speed):
+    diagnosis: Diagnosis | None = None
+    marketability: Marketability | None = None  # cuttings / propagation resale
+    established: EstablishedResale | None = None  # whole-plant resale
 
 
 # ---- saved-plant collection ----
@@ -124,6 +125,7 @@ class PlantPatch(BaseModel):
     props_in_progress: int | None = None
     cost: float | None = None
     thumbnail: str | None = None  # replace / clear the photo
+    ai_result: dict | None = None  # merge in on-demand pricing/diagnosis later
 
 
 class PhotoIn(BaseModel):
@@ -167,6 +169,11 @@ class PlantOut(BaseModel):
 
 
 # ---- soil packs (tracked & sold like plants; no AI analysis) ----
+
+
+class AppraiseIn(BaseModel):
+    species: str
+    common_name: str = ""
 
 
 class SoilMarket(BaseModel):

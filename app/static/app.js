@@ -17,6 +17,7 @@ let currentResult = null;   // the PropResult being shown
 let currentSaved = null;    // PlantOut if this result is a saved plant, else null
 let lastThumb = "";         // small base64 thumb of the just-taken photo
 let lastPhotoData = "";     // ~1024px data URI of the just-taken photo (seeds the gallery on save)
+let lastBlob = null;        // the just-analyzed image blob (for on-demand health check)
 let mineRows = [], familyRows = [];
 const filterState = { mine: "all", family: "all" };
 
@@ -60,9 +61,8 @@ function showTab(name) {
 
 /* ---------- identify ---------- */
 const LOADER_MSGS = [
-  "Reading your photo…", "Asking the plant its name…", "Checking its health…",
-  "Mixing up care tips…", "Pricing it for the shelf…", "Sketching the propagation…",
-  "Almost there — worth the wait…",
+  "Reading your photo…", "Asking the plant its name…", "Mixing up care tips…",
+  "Sketching how to propagate it…", "Almost there…",
 ];
 let loaderTimer = null;
 function startLoader() {
@@ -115,6 +115,7 @@ pick.addEventListener("change", async (e) => {
   status.className = "status";
   status.textContent = "";
   const blob = await compress(file);
+  lastBlob = blob;
   lastThumb = await thumbDataURL(file);
   lastPhotoData = await blobToDataURL(blob);
   $("thumb").src = URL.createObjectURL(blob);
@@ -606,10 +607,14 @@ function renderSummary(d) {
     const eat = st === "edible" || st === "parts_edible";
     html += `<div class="sed ${st}">${ED_ICON[st]} <span><b>${ED_LABEL[st]}</b>${eat && ed.score != null ? ` · ${ed.score}/10` : ""}${ed.summary ? ` — ${esc(ed.summary)}` : ""}</span></div>`;
   }
-  html += `<div class="svalue">
-    <div class="sv-item"><span class="sv-k">✂️ Cuttings</span><span class="sv-p">${esc(m.est_price_range || "—")}</span><span class="sv-s">${m.score ?? "–"}/10</span></div>
-    ${e ? `<div class="sv-item"><span class="sv-k">🪴 Whole plant</span><span class="sv-p">${esc(e.est_price_range || "—")}</span><span class="sv-s">${e.score ?? "–"}/10</span></div>` : ""}
-  </div>`;
+  if (m.est_price_range || m.score != null) {
+    html += `<div class="svalue">
+      <div class="sv-item"><span class="sv-k">✂️ Cuttings</span><span class="sv-p">${esc(m.est_price_range || "—")}</span><span class="sv-s">${m.score ?? "–"}/10</span></div>
+      ${e ? `<div class="sv-item"><span class="sv-k">🪴 Whole plant</span><span class="sv-p">${esc(e.est_price_range || "—")}</span><span class="sv-s">${e.score ?? "–"}/10</span></div>` : ""}
+    </div>`;
+  } else {
+    html += `<button class="savebtn alt" id="sumAppraise" style="margin-bottom:12px">💲 Check resale value</button>`;
+  }
   const tiles = [
     ["☀️ Sun", sunThriving(c)], ["🪴 Soil", soilShort(c)], ["💧 Water", waterShort(c)],
     ["🌡️ Temp", tempIdeal(c)], ["💦 Humidity", c.humidity || "—"],
@@ -620,6 +625,7 @@ function renderSummary(d) {
   if (hasLight(c)) html += `<div class="srange"><div class="srk">Light range</div>${lightZones(c.light)}</div>`;
   if (hasTemp(c)) html += `<div class="srange"><div class="srk">Temperature</div>${tempBar(c.temp)}</div>`;
   $("summary").innerHTML = html;
+  if ($("sumAppraise")) $("sumAppraise").onclick = (ev) => runAppraise(ev.target);
 }
 
 function renderCareDetail(c) {
@@ -652,6 +658,12 @@ function setMode(m) {
 }
 
 function renderDiagnosis(dx) {
+  if (!dx) {
+    $("dx").className = "dx";
+    $("dx").innerHTML = `<button class="savebtn alt" id="dxBtn">🩺 Run health check-up</button>`;
+    $("dxBtn").onclick = (ev) => runDiagnose(ev.target);
+    return;
+  }
   const st = ["healthy", "watch", "issue"].includes(dx.status) ? dx.status : "watch";
   const issues = (dx.issues || [])
     .map((i) => {
@@ -696,6 +708,68 @@ function render(d) {
   card.style.display = "block";
 }
 
+/* ---------- on-demand pricing + health check (split out for speed) ---------- */
+async function persistResultIfSaved() {
+  if (!currentSaved) return;
+  currentSaved.ai_result = currentResult;
+  try {
+    await fetch("/plants/" + currentSaved.id, {
+      method: "PATCH", headers: { "Content-Type": "application/json", "X-User": me },
+      body: JSON.stringify({ ai_result: currentResult }),
+    });
+  } catch (e) { /* keep UI */ }
+}
+async function savedImageBlob() {
+  if (!currentSaved) return null;
+  try {
+    const photos = await (await fetch(`/plants/${currentSaved.id}/photos`)).json();
+    const cover = photos.find((p) => p.is_cover) || photos[0];
+    if (cover) return await (await fetch(`/photos/${cover.id}/full`)).blob();
+  } catch (e) { /* fall through */ }
+  if (currentSaved.thumbnail) {
+    try { return await (await fetch(currentSaved.thumbnail)).blob(); } catch (e) { /* none */ }
+  }
+  return null;
+}
+async function runAppraise(btn) {
+  const d = currentResult;
+  if (btn) { btn.disabled = true; btn.textContent = "Checking value…"; }
+  try {
+    const r = await fetch("/appraise", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ species: d.species, common_name: d.common_name || "" }),
+    });
+    if (!r.ok) throw new Error();
+    const out = await r.json();
+    d.marketability = out.marketability;
+    d.established = out.established;
+    await persistResultIfSaved();
+    render(d);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = "💲 Check resale value — retry"; }
+  }
+}
+async function runDiagnose(btn) {
+  const d = currentResult;
+  if (btn) { btn.disabled = true; btn.textContent = "Checking health…"; }
+  try {
+    const blob = currentSaved ? await savedImageBlob() : lastBlob;
+    if (!blob) throw new Error();
+    const fd = new FormData();
+    fd.append("file", blob, "plant.jpg");
+    fd.append("species", d.species);
+    fd.append("common_name", d.common_name || "");
+    const r = await fetch("/diagnose", { method: "POST", body: fd });
+    if (!r.ok) throw new Error();
+    const out = await r.json();
+    d.diagnosis = out.diagnosis;
+    await persistResultIfSaved();
+    render(d);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = "🩺 Run health check-up — retry"; }
+  }
+}
+
 /* ---------- resale (cuttings + whole plant) ---------- */
 const cap = (s) => (s ? String(s)[0].toUpperCase() + String(s).slice(1) : "");
 
@@ -709,6 +783,11 @@ function rcard(title, score, price, meta, notes) {
 }
 
 function renderResale(d) {
+  if (!d.marketability) {
+    $("resale").innerHTML = `<button class="savebtn alt" id="appraiseBtn">💲 Check resale value</button>`;
+    $("appraiseBtn").onclick = (ev) => runAppraise(ev.target);
+    return;
+  }
   const m = d.marketability || {};
   const e = d.established;
   let html = `<div class="resale2">`;
