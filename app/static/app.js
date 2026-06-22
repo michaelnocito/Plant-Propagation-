@@ -166,6 +166,7 @@ function showResult(d, saved, thumb) {
   currentResult = d;
   currentSaved = saved;
   render(d);
+  ensureDiagram(d); // background: fill the propagation diagram a few seconds later
   if (thumb) {
     $("thumb").src = thumb;
     $("thumb").style.display = "block";
@@ -637,8 +638,6 @@ function renderSummary(d) {
       <div class="sv-item"><span class="sv-k">✂️ Cuttings</span><span class="sv-p">${esc(m.est_price_range || "—")}</span><span class="sv-s">${m.score ?? "–"}/10</span></div>
       ${e ? `<div class="sv-item"><span class="sv-k">🪴 Whole plant</span><span class="sv-p">${esc(e.est_price_range || "—")}</span><span class="sv-s">${e.score ?? "–"}/10</span></div>` : ""}
     </div>`;
-  } else {
-    html += `<button class="savebtn alt" id="sumAppraise" style="margin-bottom:12px">💲 Check resale value</button>`;
   }
   const tiles = [
     ["☀️ Sun", sunThriving(c)], ["🪴 Soil", soilShort(c)], ["💧 Water", waterShort(c)],
@@ -650,7 +649,6 @@ function renderSummary(d) {
   if (hasLight(c)) html += `<div class="srange"><div class="srk">Light range</div>${lightZones(c.light)}</div>`;
   if (hasTemp(c)) html += `<div class="srange"><div class="srk">Temperature</div>${tempBar(c.temp)}</div>`;
   $("summary").innerHTML = html;
-  if ($("sumAppraise")) $("sumAppraise").onclick = (ev) => runAppraise(ev.target);
 }
 
 function renderCareDetail(c) {
@@ -684,11 +682,10 @@ function setMode(m) {
 
 function renderDiagnosis(dx) {
   if (!dx) {
-    $("dx").className = "dx";
-    $("dx").innerHTML = `<button class="savebtn alt" id="dxBtn">🩺 Run health check-up</button>`;
-    $("dxBtn").onclick = (ev) => runDiagnose(ev.target);
+    $("dx-sec").style.display = "none";
     return;
   }
+  $("dx-sec").style.display = "block";
   const st = ["healthy", "watch", "issue"].includes(dx.status) ? dx.status : "watch";
   const issues = (dx.issues || [])
     .map((i) => {
@@ -718,13 +715,15 @@ function links(species) {
 function render(d) {
   $("name").textContent = d.common_name;
   $("latin").textContent = d.confidence ? `${d.species} · ${Math.round(d.confidence * 100)}% match` : d.species;
+  renderExtras(d);
   renderDiagnosis(d.diagnosis);
   renderSummary(d);
   renderCareDetail(d.care);
   renderEdible(d.edible);
   applyMode();
   $("tags").innerHTML = [d.method, d.difficulty, d.timeline].map((t) => `<span class="tag">${esc(t)}</span>`).join("");
-  $("svg").innerHTML = d.diagram_svg;
+  $("plate").style.display = d.diagram_svg ? "block" : "none";
+  $("svg").innerHTML = d.diagram_svg || "";
   $("steps").innerHTML = d.steps.map((s) => `<li>${esc(s)}</li>`).join("");
   renderResale(d);
   $("links").innerHTML = links(d.species)
@@ -734,6 +733,38 @@ function render(d) {
 }
 
 /* ---------- on-demand pricing + health check (split out for speed) ---------- */
+function renderExtras(d) {
+  const bar = $("extras");
+  const btns = [];
+  if (!d.marketability) btns.push(`<button class="exbtn" data-ex="appraise">💲 Check resale value</button>`);
+  if (!d.diagnosis) btns.push(`<button class="exbtn" data-ex="diagnose">🩺 Health check-up</button>`);
+  if (!btns.length) { bar.style.display = "none"; bar.innerHTML = ""; return; }
+  bar.style.display = "grid";
+  bar.style.gridTemplateColumns = btns.length > 1 ? "1fr 1fr" : "1fr";
+  bar.innerHTML = btns.join("");
+  bar.querySelectorAll("[data-ex]").forEach((b) =>
+    (b.onclick = () => (b.dataset.ex === "appraise" ? runAppraise(b) : runDiagnose(b))));
+}
+
+// auto-load the propagation diagram in the background (deferred from the fast core pass)
+async function ensureDiagram(d) {
+  if (!d || d.diagram_svg) return;
+  try {
+    const r = await fetch("/diagram", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ species: d.species, common_name: d.common_name || "", method: d.method || "" }),
+    });
+    if (!r.ok) return;
+    const out = await r.json();
+    d.diagram_svg = out.diagram_svg || "";
+    if (d === currentResult && d.diagram_svg) {
+      $("plate").style.display = "block";
+      $("svg").innerHTML = d.diagram_svg;
+    }
+    await persistResultIfSaved();
+  } catch (e) { /* diagram is optional */ }
+}
+
 async function persistResultIfSaved() {
   if (!currentSaved) return;
   currentSaved.ai_result = currentResult;
@@ -809,10 +840,10 @@ function rcard(title, score, price, meta, notes) {
 
 function renderResale(d) {
   if (!d.marketability) {
-    $("resale").innerHTML = `<button class="savebtn alt" id="appraiseBtn">💲 Check resale value</button>`;
-    $("appraiseBtn").onclick = (ev) => runAppraise(ev.target);
+    $("resale-sec").style.display = "none";
     return;
   }
+  $("resale-sec").style.display = "block";
   const m = d.marketability || {};
   const e = d.established;
   let html = `<div class="resale2">`;

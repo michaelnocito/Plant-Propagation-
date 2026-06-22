@@ -89,7 +89,7 @@ class PropResult(BaseModel):
     difficulty: str
     timeline: str
     steps: list[str]
-    diagram_svg: str
+    diagram_svg: str = ""  # loaded in the background after the fast core pass
     care: Care
     edible: Edible
     # filled on-demand (kept out of the initial import for speed):
@@ -174,6 +174,12 @@ class PlantOut(BaseModel):
 class AppraiseIn(BaseModel):
     species: str
     common_name: str = ""
+
+
+class DiagramIn(BaseModel):
+    species: str
+    common_name: str = ""
+    method: str = ""
 
 
 class SoilMarket(BaseModel):

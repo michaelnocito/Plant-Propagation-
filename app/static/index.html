@@ -558,6 +558,11 @@
   .dx.healthy{background:#e7ead0; border-color:#c2c79f}
   .sev.low{background:#6f8456}
   .pcard .cat{color:var(--inkg2)}
+  /* on-demand extras bar (resale / health) */
+  .extras{display:grid; gap:8px; margin:14px 0 0}
+  .exbtn{border:1px solid var(--blue); background:var(--paper2); color:var(--blue-d); border-radius:11px;
+    padding:12px 8px; font-size:14px; font-weight:600; cursor:pointer}
+  .exbtn:active{transform:scale(.98)}
   /* empty states */
   .empty{color:var(--sepia2)}
   .empty svg{width:52px; height:52px; opacity:.5; display:block; margin:0 auto 10px; stroke:var(--inkg2)}
@@ -639,6 +644,9 @@
         </div>
       </div>
 
+      <!-- on-demand pricing / health actions — right under the title, before manage -->
+      <div id="extras" class="extras" style="display:none"></div>
+
       <div class="sec"><div id="savebar" class="savebar"></div></div>
 
       <!-- SUMMARY (low-cognitive setup essentials) -->
@@ -651,7 +659,7 @@
           <div id="photos"></div>
         </div>
 
-        <div class="sec">
+        <div class="sec" id="dx-sec">
           <h3 class="sec-h">Plant check-up</h3>
           <div id="dx"></div>
         </div>
@@ -669,11 +677,11 @@
         <div class="sec">
           <h3 class="sec-h">Propagate me</h3>
           <div class="row" id="tags"></div>
-          <div class="plate"><div id="svg"></div></div>
+          <div class="plate" id="plate" style="display:none"><div id="svg"></div></div>
           <ol id="steps"></ol>
         </div>
 
-        <div class="sec">
+        <div class="sec" id="resale-sec">
           <h3 class="sec-h">Resale read</h3>
           <div id="resale"></div>
         </div>

@@ -26,7 +26,6 @@ Return ONLY a JSON object (no markdown, no prose) with these exact keys:
   "difficulty": "easy | moderate | hard",
   "timeline": "e.g. roots in 2-4 weeks",
   "steps": ["short imperative step", "..."],
-  "diagram_svg": "self-contained inline SVG (viewBox 0 0 200 200, no external refs, 2-3 colors, simple line art) of the propagation method",
   "care": {{
     "light": {{
       "floor": "the DIMMEST light it merely survives in (be specific, e.g. '~3 ft from a north window — survives but growth stalls'). Do NOT just say 'low light'.",
@@ -143,6 +142,21 @@ async def appraise_plant(species: str, common: str) -> dict:
     msg = await client.messages.create(
         model=MODEL, max_tokens=700,
         messages=[{"role": "user", "content": APPRAISE_PROMPT.format(species=species, common=common)}],
+    )
+    return _parse(msg)
+
+
+DIAGRAM_PROMPT = """Return ONLY a JSON object: {{"diagram_svg": "<svg ...>"}}
+where diagram_svg is a self-contained inline SVG (viewBox 0 0 200 200, no external refs, 2-3 colors,
+simple clean line art) illustrating how to propagate a {common} ({species}) by {method}. Output JSON only."""
+
+
+async def diagram_plant(species: str, common: str, method: str) -> dict:
+    """On-demand propagation diagram (loaded in the background after the fast core result)."""
+    msg = await client.messages.create(
+        model=MODEL, max_tokens=1500,
+        messages=[{"role": "user", "content": DIAGRAM_PROMPT.format(
+            species=species, common=common or species, method=method or "cutting")}],
     )
     return _parse(msg)
 

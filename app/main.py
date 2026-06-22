@@ -12,12 +12,13 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from .claude import appraise_plant, appraise_soil, diagnose_plant, enrich_core
+from .claude import appraise_plant, appraise_soil, diagnose_plant, diagram_plant, enrich_core
 from .db import MEMBERS, Photo, Plant, Session, SoilPack, User, get_user, init_db
 from .models import (
     CATEGORIES,
     VISIBILITIES,
     AppraiseIn,
+    DiagramIn,
     PhotoIn,
     PhotoOut,
     PhotoPatch,
@@ -90,6 +91,15 @@ async def appraise(body: AppraiseIn):
         return await appraise_plant(body.species, body.common_name)
     except Exception as e:  # noqa: BLE001
         raise HTTPException(502, f"Appraise failed: {e}") from e
+
+
+@app.post("/diagram")
+async def diagram(body: DiagramIn):
+    """On-demand propagation diagram (the app loads this in the background)."""
+    try:
+        return await diagram_plant(body.species, body.common_name, body.method)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"Diagram failed: {e}") from e
 
 
 @app.post("/diagnose")
