@@ -689,4 +689,13 @@ $("lightbox").onclick = (e) => { if (e.target.id === "lightbox") closeLightbox()
   }
 })();
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch(() => {});
+  // when a new service worker takes control, refresh once so the latest UI shows
+  let _reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (_reloaded) return;
+    _reloaded = true;
+    location.reload();
+  });
+}
