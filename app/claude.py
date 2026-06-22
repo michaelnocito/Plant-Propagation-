@@ -156,3 +156,36 @@ async def enrich(species: str, common: str, image: bytes, content_type: str | No
     text = "".join(b.text for b in msg.content if b.type == "text")
     text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
     return PropResult.model_validate(json.loads(text))
+
+
+SOIL_PROMPT = """You price a bag of houseplant soil mix for resale (Etsy / FB Marketplace / local plant sales).
+Mix name: {name}
+Bag size: {size}
+Ingredients: {ingredients}
+Good for: {suits}
+
+Return ONLY a JSON object (no markdown) with these exact keys:
+{{
+  "score": 1-10 integer (how sellable THIS bag is — chunky aroid/specialty blends sell best; plain all-purpose is low),
+  "demand": "low | medium | high",
+  "est_price_range": "realistic price for this bag SIZE, e.g. $8-14",
+  "sell_notes": "one line: who buys it + best venue + a pricing or presentation tip"
+}}
+Price from the bag size and ingredient cost (bark, pumice, charcoal, worm castings raise value; plain peat/coir is cheap). Output JSON only."""
+
+
+async def appraise_soil(name: str, size: str, recipe: dict) -> dict:
+    ings = ", ".join(
+        f"{(i.get('parts') or '').strip()} {(i.get('name') or '').strip()}".strip()
+        for i in (recipe.get("ingredients") or [])
+    ) or "unspecified"
+    suits = ", ".join(recipe.get("suits") or []) or "general houseplants"
+    msg = await client.messages.create(
+        model=MODEL,
+        max_tokens=400,
+        messages=[{"role": "user", "content": SOIL_PROMPT.format(
+            name=name or "house plant soil mix", size=size or "1 quart", ingredients=ings, suits=suits)}],
+    )
+    text = "".join(b.text for b in msg.content if b.type == "text")
+    text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    return json.loads(text)

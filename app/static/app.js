@@ -55,6 +55,7 @@ function showTab(name) {
   if (name === "mine") loadMine();
   if (name === "family") loadFamily();
   if (name === "market") loadMarket();
+  if (name === "soil") loadSoil();
 }
 
 /* ---------- identify ---------- */
@@ -700,6 +701,249 @@ function renderEdible(e) {
   box.innerHTML = html;
 }
 
+/* ================= SOIL LAB ================= */
+const RECIPES = [
+  { key: "general", name: "All-purpose indoor", ratio: "2 coir : 1 perlite : 1 sand",
+    ingredients: [{ name: "Coco coir (or peat)", parts: "2" }, { name: "Perlite", parts: "1" }, { name: "Coarse sand", parts: "1" }],
+    suits: ["Pothos", "Philodendron", "Peace lily", "Dracaena", "Dieffenbachia", "Spider plant", "Schefflera", "ZZ", "Rubber plant"],
+    method: "Pre-wet the coir so it absorbs evenly, then mix until uniform (with peat, add a pinch of lime). The baseline mix — go chunkier for anything epiphytic.",
+    storage: "Sealed bin, kept dry — coir rehydrates cleaner than peat.",
+    bulk: "Coco coir — cheapest as compressed bricks (1 kg ≈ 5 L hydrated)." },
+  { key: "aroid", name: "Chunky aroid mix", ratio: "2 bark : 2 perlite : 1 coir : ½ charcoal",
+    ingredients: [{ name: "Orchid bark", parts: "2" }, { name: "Perlite or pumice", parts: "2" }, { name: "Coco coir", parts: "1" }, { name: "Horticultural charcoal", parts: "½" }],
+    suits: ["Monstera", "Pothos", "Philodendron", "Syngonium", "Rhaphidophora", "Anthurium", "Alocasia"],
+    method: "Pre-hydrate the coir, then toss everything to a uniform chunky texture — one mix top to bottom, no drainage layer. Push bark higher for epiphytic Anthurium; go a touch finer/moister for crawling philodendrons.",
+    storage: "Dry & sealed; shake dust off the bark first. Bark lasts ~18–24 months.",
+    bulk: "Orchid bark — biggest volume and degrades fastest, so highest turnover. This is the hot seller." },
+  { key: "succulent", name: "Succulent & cactus (gritty)", ratio: "1 soil : 1 sand/pumice : 1 perlite",
+    ingredients: [{ name: "Potting soil or coir", parts: "1" }, { name: "Coarse sand or pumice", parts: "1" }, { name: "Perlite", parts: "1" }],
+    suits: ["Echeveria", "Aloe", "Haworthia", "Sedum", "Sempervivum", "Jade", "Cacti"],
+    method: "Mix dry to a light, gritty texture water runs straight through. Coarse sand only — never fine play sand. For true desert cacti push grit to 2 mineral : 1 organic.",
+    storage: "Stores well dry & compact; re-fluff before bagging.",
+    bulk: "Pumice (premium, non-floating) or coarse sand by the 50 lb bag." },
+  { key: "seed", name: "Seed-starting / propagation", ratio: "1 coir : 1 perlite : 1 vermiculite",
+    ingredients: [{ name: "Coco coir (or peat)", parts: "1" }, { name: "Perlite", parts: "1" }, { name: "Vermiculite", parts: "1" }],
+    suits: ["Seeds", "Soft cuttings", "Coleus", "Tradescantia", "Herbs"],
+    method: "Pre-wet coir & vermiculite, blend, moisten before sowing. Deliberately fine and LOW-nutrient so tender new roots don't burn. For cuttings, just coir + perlite.",
+    storage: "Sealed, slightly dry; pasteurize first if it contains any compost (prevents damping-off).",
+    bulk: "Coco coir — compressed bricks are the value form." },
+  { key: "orchid", name: "Orchid bark (4:1:1)", ratio: "4 bark : 1 perlite : 1 charcoal",
+    ingredients: [{ name: "Medium fir bark", parts: "4" }, { name: "Perlite", parts: "1" }, { name: "Horticultural charcoal", parts: "1" }],
+    suits: ["Phalaenopsis", "Cattleya", "Dendrobium", "Oncidium", "Miltonia"],
+    method: "Soak the bark briefly so it isn't hydrophobic, combine, pot loosely for air gaps. Never use regular soil — it suffocates and rots orchid roots.",
+    storage: "Don't stockpile — bark mixes break down; replace every ~2 years.",
+    bulk: "Fir/orchid bark — it's 80%+ of the mix." },
+  { key: "hoya", name: "Hoya / epiphyte", ratio: "5 bark : 2 perlite : 2 coir : ½ charcoal : ½ castings",
+    ingredients: [{ name: "Orchid bark", parts: "5" }, { name: "Perlite", parts: "2" }, { name: "Coco coir", parts: "2" }, { name: "Charcoal", parts: "½" }, { name: "Worm castings", parts: "½" }],
+    suits: ["Hoya", "Epiphytes"],
+    method: "Pre-hydrate coir, then mix into the bark with perlite, charcoal and castings. Chunkier than an aroid mix so roots dry fast — epiphytes rot if kept wet. Simple version: 2 bark : 2 perlite : 1 coir.",
+    storage: "Cool, dry, sealed; keep castings dry (they clump). Bark ~18 months.",
+    bulk: "Orchid bark — half the mix." },
+  { key: "calathea", name: "Calathea / prayer plant", ratio: "2 coir : 1 fine bark : 1 perlite",
+    ingredients: [{ name: "Coco coir (or peat)", parts: "2" }, { name: "Fine bark", parts: "1" }, { name: "Perlite", parts: "1" }],
+    suits: ["Calathea", "Maranta", "Stromanthe", "Ctenanthe"],
+    method: "Hydrate coir, fold in bark & perlite (a pinch of castings + charcoal optional). Should feel spongy yet crumbly with visible air pockets — steady moisture without sogginess.",
+    storage: "Use relatively fresh — high organic content compacts; refresh yearly.",
+    bulk: "Coco coir — the dominant fraction and moisture buffer." },
+  { key: "fern", name: "Fern / moisture-lover", ratio: "1 coir : 1 vermiculite : 1 sphagnum",
+    ingredients: [{ name: "Coco coir (or peat)", parts: "1" }, { name: "Vermiculite", parts: "1" }, { name: "Sphagnum moss", parts: "1" }, { name: "Charcoal", parts: "1 Tbsp/qt" }],
+    suits: ["Boston fern", "Maidenhair", "Bird's nest", "Staghorn"],
+    method: "Blend evenly, add charcoal to keep the constantly-damp mix sweet, pre-moisten. Vermiculite (not perlite) is chosen for higher water-holding.",
+    storage: "Sealed and barely damp; sphagnum/peat dry into hard pucks if left open. Refresh yearly.",
+    bulk: "Vermiculite — the moisture workhorse here." },
+  { key: "herb", name: "Herb / vegetable", ratio: "2 compost : 1 coir : 1 perlite",
+    ingredients: [{ name: "Compost", parts: "2" }, { name: "Coco coir (or peat)", parts: "1" }, { name: "Perlite", parts: "1" }],
+    suits: ["Basil", "Parsley", "Thyme", "Mint", "Tomato", "Pepper", "Lettuce"],
+    method: "Mix with lime (if peat) and a balanced organic fertilizer — edibles are hungry feeders. Moisten before potting.",
+    storage: "Compost is alive — use within a season or two; store sealed but breathable, not airtight-wet.",
+    bulk: "Compost — cheapest by the bag or yard." },
+  { key: "violet", name: "African violet / begonia", ratio: "2 coir : 1 perlite : 1 vermiculite",
+    ingredients: [{ name: "Coco coir (or peat)", parts: "2" }, { name: "Perlite", parts: "1" }, { name: "Vermiculite", parts: "1" }],
+    suits: ["African violet", "Streptocarpus", "Episcia", "Begonia"],
+    method: "Blend to a loose, fluffy, crumbly texture; add dolomite lime to pH 6.5–6.8. Airy, not dense. For wick-watering, push perlite to 50–60% and drop the vermiculite.",
+    storage: "Stores well sealed & dry; high perlite fraction resists compaction.",
+    bulk: "Coarse perlite — 25–60% of the mix." },
+];
+
+const GUIDES = [
+  { key: "bulk", name: "Buying components in bulk", lines: [
+    "Perlite — a 4 cu ft compressed bag from a grower supplier is often 50–70% cheaper per litre than retail. ⚠️ Wet it before handling; the dust is a lung irritant.",
+    "Coco coir — buy compressed bricks, not loose bags. 1 kg ≈ 5 L once soaked (30–60 min, warm water). Get rinsed/buffered low-EC coir to avoid salt.",
+    "Orchid bark — a 2 cu ft box from orchid suppliers beats 4-qt retail. Breaks down in 1–3 yrs, so don't over-stock; keep dry or it molds.",
+    "Pumice — by weight at masonry/pottery/bonsai suppliers. Durable, rinsable, reusable — a premium upgrade over perlite.",
+    "Coarse sand — a 50 lb bag of 'sharp/coarse/quartz' sand at a masonry yard (never play sand). ⚠️ Silica dust: keep damp, wear a mask.",
+    "Worm castings — a big bag or a local worm farm; the microbes fade after 6–12 months, so buy what you'll use.",
+    "Vermiculite, charcoal & LECA — large grower bags beat boutique tubs and keep indefinitely if stored dry.",
+  ] },
+  { key: "storage", name: "Storing soil & components", lines: [
+    "Dry storage is the #1 rule — fungus gnats and mold need moist organic media. Dry mixes & components before sealing (not powder-dry, just dry).",
+    "Use sealed rigid bins with tight lids — a bag clip isn't enough. One bin per raw component + one per finished blend = clean inventory.",
+    "Keep them cool, dry and low-humidity. Heat + damp speed mold and breakdown.",
+    "Use only pasteurized/fully-composted ingredients; more perlite/pumice/bark resists gnats. Sterilize bins with 1:9 bleach:water (30 min), rinse, dry.",
+    "Label every bag: mix name · volume (cups) · date made · full ingredients · plant suitability · a quick use note.",
+  ] },
+];
+
+let soilView = "recipes";
+let soilPacks = [];
+let currentSoil = null;
+
+function loadSoil() {
+  renderRecipes();
+  setSoilView(soilView);
+}
+function setSoilView(v) {
+  soilView = v;
+  $("soil-recipes").style.display = v === "recipes" ? "block" : "none";
+  $("soil-packs").style.display = v === "packs" ? "block" : "none";
+  document.querySelectorAll("#soil-toggle button").forEach((b) => b.classList.toggle("on", b.dataset.soil === v));
+  if (v === "packs") loadSoilPacks();
+}
+
+function renderRecipes() {
+  const box = $("soil-recipes");
+  const guides = GUIDES.map(
+    (g) => `<div class="recipe" data-key="g-${g.key}">
+      <div class="recipe-h"><div class="rn">${esc(g.name)}</div><span class="chev">▾</span></div>
+      <div class="recipe-body">${g.lines.map((l) => `<div class="rtip" style="margin-top:8px">${esc(l)}</div>`).join("")}</div>
+    </div>`
+  ).join("");
+  const recipes = RECIPES.map((r) => {
+    const ings = r.ingredients.map((i) => `<div class="ing"><span>${esc(i.name)}</span><b>${esc(i.parts)}</b></div>`).join("");
+    const suits = r.suits.map((s) => `<span>${esc(s)}</span>`).join("");
+    return `<div class="recipe" data-key="${r.key}">
+      <div class="recipe-h"><div><div class="rn">${esc(r.name)}</div><div class="rmeta">${esc(r.ratio)}</div></div><span class="chev">▾</span></div>
+      <div class="recipe-body">
+        <div class="rsub">Mix (parts by volume)</div>${ings}
+        <div class="rsub">Good for</div><div class="suits">${suits}</div>
+        <div class="rsub">How</div><div class="rtip">${esc(r.method)}</div>
+        <div class="rsub">Storage</div><div class="rtip">${esc(r.storage)}</div>
+        <div class="rsub">Buy in bulk</div><div class="rtip">${esc(r.bulk)}</div>
+        <button class="makebtn" data-make="${r.key}">＋ Make a batch from this</button>
+      </div></div>`;
+  }).join("");
+  box.innerHTML = `<div class="rsub" style="margin:4px 0 8px">Maker's guide</div>${guides}<div class="rsub" style="margin:16px 0 8px">Recipes — pick the right blend per plant</div>${recipes}`;
+  box.querySelectorAll(".recipe-h").forEach((h) => (h.onclick = () => h.parentElement.classList.toggle("open")));
+  box.querySelectorAll("[data-make]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); makePack(b.dataset.make); }));
+}
+
+async function postSoil(body) {
+  try {
+    const r = await fetch("/soil", { method: "POST", headers: { "Content-Type": "application/json", "X-User": me }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error();
+    return await r.json();
+  } catch (e) {
+    alert("Couldn't create that batch — try again.");
+    return null;
+  }
+}
+async function makePack(key) {
+  if (!me) return showPicker();
+  const r = RECIPES.find((x) => x.key === key);
+  if (!r) return;
+  const btn = document.querySelector(`[data-make="${key}"]`);
+  if (btn) { btn.disabled = true; btn.textContent = "Mixing & pricing…"; }
+  const pack = await postSoil({
+    name: r.name, recipe_key: r.key, size: "1 quart",
+    recipe: { ingredients: r.ingredients, suits: r.suits }, visibility: "private", in_market: false,
+  });
+  if (btn) { btn.disabled = false; btn.textContent = "＋ Make a batch from this"; }
+  if (pack) { setSoilView("packs"); openSoil(pack); }
+}
+async function newCustomPack() {
+  if (!me) return showPicker();
+  const name = prompt("Name this mix (e.g. 'My custom aroid blend'):");
+  if (!name) return;
+  const pack = await postSoil({ name, recipe_key: "custom", size: "1 quart", recipe: {}, visibility: "private", in_market: false });
+  if (pack) openSoil(pack);
+}
+
+async function loadSoilPacks() {
+  if (!me) return showPicker();
+  const box = $("soil-packs");
+  box.innerHTML = `<div class="empty">Loading…</div>`;
+  try {
+    soilPacks = await (await fetch("/soil/mine", { headers: { "X-User": me } })).json();
+  } catch (e) { soilPacks = []; }
+  drawSoilPacks();
+}
+function drawSoilPacks() {
+  const box = $("soil-packs");
+  let html = `<button class="soilnew" id="soilNew">＋ New batch from scratch</button>`;
+  html += soilPacks.length
+    ? soilPacks.map(spackCard).join("")
+    : emptyState("No batches yet.<br>Open a recipe and tap <b>Make a batch</b>.");
+  box.innerHTML = html;
+  $("soilNew").onclick = newCustomPack;
+  box.querySelectorAll(".spack").forEach((el, i) => (el.onclick = () => openSoil(soilPacks[i])));
+}
+function spackCard(sp) {
+  const m = sp.market || {};
+  const img = sp.thumbnail ? `<img class="sph" src="${sp.thumbnail}" alt="">` : `<div class="snoph">🪴</div>`;
+  const badges = `${sp.in_market ? '<span class="sb market">Listed</span>' : ""}${sp.sold ? '<span class="sb sold">Sold</span>' : ""}`;
+  return `<div class="spack">${img}
+    <div><div class="snm">${esc(sp.name)}</div>
+      <div class="ssz">${esc(sp.size || "")}${m.score ? ` · sell ${m.score}/10` : ""}</div>
+      ${badges ? `<div class="sbadges">${badges}</div>` : ""}</div>
+    <div class="sprice">${m.est_price_range ? `<b>${esc(m.est_price_range)}</b>` : ""}</div></div>`;
+}
+
+function openSoil(sp) {
+  currentSoil = sp;
+  renderSoilDetail();
+  $("soilDetail").classList.add("on");
+}
+function closeSoil() {
+  $("soilDetail").classList.remove("on");
+  if (soilView === "packs") loadSoilPacks();
+}
+async function soilPatch(fields, rerender = true) {
+  try {
+    const r = await fetch("/soil/" + currentSoil.id, { method: "PATCH", headers: { "Content-Type": "application/json", "X-User": me }, body: JSON.stringify(fields) });
+    if (r.ok) { currentSoil = await r.json(); if (rerender) renderSoilDetail(); }
+  } catch (e) { /* keep UI */ }
+}
+async function soilDelete() {
+  if (!confirm("Delete this batch?")) return;
+  await fetch("/soil/" + currentSoil.id, { method: "DELETE", headers: { "X-User": me } });
+  closeSoil();
+}
+function renderSoilDetail() {
+  const sp = currentSoil, m = sp.market || {}, rec = sp.recipe || {}, mine = sp.owner === me, owner = memberBy(sp.owner);
+  const ings = (rec.ingredients || []).map((i) => `<div class="ing"><span>${esc(i.name)}</span><b>${esc(i.parts || "")}</b></div>`).join("");
+  const suits = (rec.suits || []).map((s) => `<span>${esc(s)}</span>`).join("");
+  let html = `<h2 class="vh" style="margin:2px 0 2px">${esc(sp.name)}</h2>
+    <div class="ssz" style="margin-bottom:12px">${esc(sp.size || "")} · by ${esc(owner.display_name)}</div>`;
+  if (sp.thumbnail) html += `<img src="${sp.thumbnail}" style="width:100%;max-height:240px;object-fit:cover;border-radius:12px;border:1px solid var(--rule)" alt="">`;
+  html += `<div class="rcard" style="margin-top:14px"><div class="rh"><span class="rt">Market value</span><span class="rs">${m.score ?? "–"}<small>/10</small></span></div>
+    <div class="price">${esc(m.est_price_range || "—")}</div>
+    <div class="meta">${m.demand ? esc(cap(m.demand)) + " demand" : ""}</div>
+    ${m.sell_notes ? `<div class="notes">${esc(m.sell_notes)}</div>` : ""}</div>`;
+  if (ings || suits) {
+    html += `<div class="sec"><h3 class="sec-h">Recipe</h3>${ings}${suits ? `<div class="rsub">Good for</div><div class="suits">${suits}</div>` : ""}</div>`;
+  }
+  if (mine) {
+    html += `<div class="savedrow" style="margin-top:16px">
+      <div class="who">Manage</div>
+      <div class="seg" id="soilVis"><button data-v="private" class="${sp.visibility === "private" ? "on" : ""}">Private</button><button data-v="family" class="${sp.visibility === "family" ? "on" : ""}">Family</button></div>
+      <input class="nick" id="soilSize" placeholder="Size (e.g. 2 qt bag)" value="${esc(sp.size)}" />
+      <button class="mktbtn ${sp.in_market ? "on" : ""}" id="soilMkt">${sp.in_market ? "✓ Listed on Marketplace" : "＋ List on Marketplace"}</button>
+      <div class="mline2"><button class="mgbtn ${sp.sold ? "on" : ""}" id="soilSold">${sp.sold ? "↩ Mark available" : "✓ Mark as sold"}</button></div>
+      <div class="mline2"><button class="link" id="soilPhoto">${sp.thumbnail ? "Change photo" : "Add photo"}</button></div>
+      <button class="delbtn" id="soilDel">Delete batch</button>
+    </div>`;
+  }
+  $("soilBody").innerHTML = html;
+  if (mine) {
+    $("soilVis").querySelectorAll("button").forEach((b) => (b.onclick = () => soilPatch({ visibility: b.dataset.v })));
+    $("soilSize").onblur = (e) => soilPatch({ size: e.target.value }, false);
+    $("soilMkt").onclick = () => soilPatch({ in_market: !currentSoil.in_market });
+    $("soilSold").onclick = () => soilPatch({ sold: !currentSoil.sold });
+    $("soilPhoto").onclick = () => $("soilPhotoInput").click();
+    $("soilDel").onclick = soilDelete;
+  }
+}
+
 /* ---------- boot ---------- */
 chip.onclick = showPicker;
 document.querySelectorAll("nav.tabs button").forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
@@ -708,6 +952,13 @@ document.querySelectorAll("[data-export]").forEach((b) => (b.onclick = () => exp
 $("galleryInput").onchange = (e) => { const f = [...e.target.files]; e.target.value = ""; addGalleryPhotos(f); };
 $("lbClose").onclick = closeLightbox;
 $("lightbox").onclick = (e) => { if (e.target.id === "lightbox") closeLightbox(); };
+document.querySelectorAll("#soil-toggle button").forEach((b) => (b.onclick = () => setSoilView(b.dataset.soil)));
+$("soilClose").onclick = closeSoil;
+$("soilPhotoInput").onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f || !currentSoil) return;
+  await soilPatch({ thumbnail: await thumbDataURL(f) });
+};
 
 (async function init() {
   try {

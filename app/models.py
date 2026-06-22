@@ -161,3 +161,62 @@ class PlantOut(BaseModel):
     sold: bool
     props_in_progress: int
     created_at: str
+
+
+# ---- soil packs (tracked & sold like plants; no AI analysis) ----
+
+
+class SoilMarket(BaseModel):
+    """Appraised resale read for a bag of mix."""
+
+    score: int = Field(ge=1, le=10)
+    demand: str
+    est_price_range: str
+    sell_notes: str
+
+
+class SoilAppraiseIn(BaseModel):
+    name: str
+    size: str = ""
+    recipe: dict = {}  # {ingredients:[{name,parts}], suits:[...]}
+
+
+class SoilPackIn(BaseModel):
+    name: str
+    recipe_key: str = ""
+    size: str = ""
+    recipe: dict = {}
+    market: dict = {}
+    notes: str = ""
+    thumbnail: str = ""
+    visibility: str = "private"
+    in_market: bool = False
+
+
+class SoilPackPatch(BaseModel):
+    name: str | None = None
+    size: str | None = None
+    notes: str | None = None
+    thumbnail: str | None = None
+    visibility: str | None = None
+    in_market: bool | None = None
+    sold: bool | None = None
+    market: dict | None = None
+
+
+class SoilPackOut(BaseModel):
+    id: int
+    owner: str
+    owner_name: str
+    owner_color: str
+    name: str
+    recipe_key: str
+    size: str
+    recipe: dict
+    market: dict
+    notes: str
+    thumbnail: str
+    visibility: str
+    in_market: bool
+    sold: bool
+    created_at: str

@@ -12,8 +12,8 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from .claude import enrich
-from .db import MEMBERS, Photo, Plant, Session, get_user, init_db
+from .claude import appraise_soil, enrich
+from .db import MEMBERS, Photo, Plant, Session, SoilPack, get_user, init_db
 from .models import (
     CATEGORIES,
     VISIBILITIES,
@@ -23,6 +23,10 @@ from .models import (
     PlantIn,
     PlantOut,
     PlantPatch,
+    SoilAppraiseIn,
+    SoilPackIn,
+    SoilPackOut,
+    SoilPackPatch,
 )
 from .plantid import IDError, identify
 
@@ -376,6 +380,135 @@ async def export_photos(
             media_type="application/zip",
             headers={"Content-Disposition": f'attachment; filename="rootwork-{_safe(scope)}-photos.zip"'},
         )
+
+
+# ---- soil packs (tracked & sold like plants; no AI analysis) ----
+
+
+def _soil_out(sp: SoilPack) -> SoilPackOut:
+    return SoilPackOut(
+        id=sp.id,
+        owner=sp.owner.slug,
+        owner_name=sp.owner.display_name,
+        owner_color=sp.owner.color,
+        name=sp.name,
+        recipe_key=sp.recipe_key,
+        size=sp.size,
+        recipe=json.loads(sp.recipe or "{}"),
+        market=json.loads(sp.market or "{}"),
+        notes=sp.notes,
+        thumbnail=sp.thumbnail,
+        visibility=sp.visibility,
+        in_market=sp.in_market,
+        sold=sp.sold,
+        created_at=sp.created_at.isoformat(),
+    )
+
+
+@app.post("/soil/appraise")
+async def soil_appraise(body: SoilAppraiseIn):
+    """Market value for a bag of mix (no plant analysis — just pricing)."""
+    try:
+        return await appraise_soil(body.name, body.size, body.recipe)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"Appraise failed: {e}") from e
+
+
+@app.post("/soil", response_model=SoilPackOut)
+async def create_soil(body: SoilPackIn, x_user: str | None = Header(default=None)):
+    if body.visibility not in VISIBILITIES:
+        raise HTTPException(400, "Bad visibility.")
+    market = body.market
+    if not market:
+        try:
+            market = await appraise_soil(body.name, body.size, body.recipe)
+        except Exception:  # noqa: BLE001
+            market = {}
+    async with Session() as s:
+        user = await _require_user(s, x_user)
+        sp = SoilPack(
+            owner_id=user.id,
+            name=body.name.strip()[:120],
+            recipe_key=body.recipe_key.strip()[:48],
+            size=body.size.strip()[:48],
+            recipe=json.dumps(body.recipe),
+            market=json.dumps(market),
+            notes=body.notes.strip(),
+            thumbnail=body.thumbnail,
+            visibility=body.visibility,
+            in_market=body.in_market,
+        )
+        s.add(sp)
+        await s.commit()
+        await s.refresh(sp, ["owner"])
+        return _soil_out(sp)
+
+
+@app.get("/soil/mine", response_model=list[SoilPackOut])
+async def my_soil(x_user: str | None = Header(default=None)):
+    async with Session() as s:
+        user = await _require_user(s, x_user)
+        rows = (
+            await s.execute(
+                select(SoilPack).options(selectinload(SoilPack.owner))
+                .where(SoilPack.owner_id == user.id).order_by(SoilPack.created_at.desc())
+            )
+        ).scalars().all()
+        return [_soil_out(sp) for sp in rows]
+
+
+@app.get("/soil/family", response_model=list[SoilPackOut])
+async def family_soil():
+    async with Session() as s:
+        rows = (
+            await s.execute(
+                select(SoilPack).options(selectinload(SoilPack.owner))
+                .where(SoilPack.visibility == "family").order_by(SoilPack.created_at.desc())
+            )
+        ).scalars().all()
+        return [_soil_out(sp) for sp in rows]
+
+
+@app.patch("/soil/{soil_id}", response_model=SoilPackOut)
+async def update_soil(soil_id: int, body: SoilPackPatch, x_user: str | None = Header(default=None)):
+    async with Session() as s:
+        user = await _require_user(s, x_user)
+        sp = await s.get(SoilPack, soil_id)
+        if not sp or sp.owner_id != user.id:
+            raise HTTPException(404, "Not found.")
+        if body.name is not None:
+            sp.name = body.name.strip()[:120]
+        if body.size is not None:
+            sp.size = body.size.strip()[:48]
+        if body.notes is not None:
+            sp.notes = body.notes.strip()
+        if body.thumbnail is not None:
+            sp.thumbnail = body.thumbnail
+        if body.visibility is not None:
+            if body.visibility not in VISIBILITIES:
+                raise HTTPException(400, "Bad visibility.")
+            sp.visibility = body.visibility
+        if body.in_market is not None:
+            sp.in_market = body.in_market
+        if body.sold is not None:
+            sp.sold = body.sold
+        if body.market is not None:
+            sp.market = json.dumps(body.market)
+        await s.commit()
+        await s.refresh(sp, ["owner"])
+        return _soil_out(sp)
+
+
+@app.delete("/soil/{soil_id}")
+async def delete_soil(soil_id: int, x_user: str | None = Header(default=None)):
+    async with Session() as s:
+        user = await _require_user(s, x_user)
+        sp = await s.get(SoilPack, soil_id)
+        if not sp or sp.owner_id != user.id:
+            raise HTTPException(404, "Not found.")
+        await s.delete(sp)
+        await s.commit()
+        return {"ok": True}
 
 
 @app.get("/")

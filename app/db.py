@@ -85,6 +85,26 @@ class Photo(Base):
     plant: Mapped[Plant] = relationship(back_populates="photos")
 
 
+class SoilPack(Base):
+    """A batch of soil mix Kelly/Mike make — tracked & sold like plants (no AI analysis)."""
+
+    __tablename__ = "soil_packs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    name: Mapped[str] = mapped_column(String(120), default="")  # e.g. "Chunky Aroid Mix"
+    recipe_key: Mapped[str] = mapped_column(String(48), default="")  # built-in recipe id, or "custom"
+    size: Mapped[str] = mapped_column(String(48), default="")  # e.g. "2 qt bag"
+    recipe: Mapped[str] = mapped_column(Text, default="{}")  # JSON snapshot {ingredients, suits, ...}
+    market: Mapped[str] = mapped_column(Text, default="{}")  # JSON {score, demand, est_price_range, sell_notes}
+    notes: Mapped[str] = mapped_column(Text, default="")
+    thumbnail: Mapped[str] = mapped_column(Text, default="")  # small base64 data URI
+    visibility: Mapped[str] = mapped_column(String(16), default="private")
+    in_market: Mapped[bool] = mapped_column(default=False)
+    sold: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+    owner: Mapped[User] = relationship()
+
+
 async def _ensure_columns(conn) -> None:
     """Tiny forward-only migration: add columns missing from an existing plants table
     (create_all only creates missing TABLES, not new columns on existing ones)."""
