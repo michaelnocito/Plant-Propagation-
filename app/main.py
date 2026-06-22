@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from .claude import appraise_plant, appraise_soil, diagnose_plant, diagram_plant, enrich_core
+from .claude import appraise_plant, appraise_soil, diagnose_plant, diagram_plant, edible_plant, enrich_core
 from .db import MEMBERS, Photo, Plant, Session, SoilPack, User, get_user, init_db
 from .models import (
     CATEGORIES,
@@ -91,6 +91,15 @@ async def appraise(body: AppraiseIn):
         return await appraise_plant(body.species, body.common_name)
     except Exception as e:  # noqa: BLE001
         raise HTTPException(502, f"Appraise failed: {e}") from e
+
+
+@app.post("/edible")
+async def edible(body: AppraiseIn):
+    """On-demand edibility / foraging info."""
+    try:
+        return await edible_plant(body.species, body.common_name)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"Edible failed: {e}") from e
 
 
 @app.post("/diagram")

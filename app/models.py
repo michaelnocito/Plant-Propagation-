@@ -91,8 +91,8 @@ class PropResult(BaseModel):
     steps: list[str]
     diagram_svg: str = ""  # loaded in the background after the fast core pass
     care: Care
-    edible: Edible
     # filled on-demand (kept out of the initial import for speed):
+    edible: Edible | None = None
     diagnosis: Diagnosis | None = None
     marketability: Marketability | None = None  # cuttings / propagation resale
     established: EstablishedResale | None = None  # whole-plant resale

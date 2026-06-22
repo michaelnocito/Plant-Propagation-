@@ -736,14 +736,37 @@ function render(d) {
 function renderExtras(d) {
   const bar = $("extras");
   const btns = [];
-  if (!d.marketability) btns.push(`<button class="exbtn" data-ex="appraise">💲 Check resale value</button>`);
-  if (!d.diagnosis) btns.push(`<button class="exbtn" data-ex="diagnose">🩺 Health check-up</button>`);
+  if (!d.marketability) btns.push(["appraise", "💲 Check resale value"]);
+  if (!d.diagnosis) btns.push(["diagnose", "🩺 Health check-up"]);
+  if (!d.edible) btns.push(["edible", "🌿 Edible & foraging"]);
   if (!btns.length) { bar.style.display = "none"; bar.innerHTML = ""; return; }
   bar.style.display = "grid";
   bar.style.gridTemplateColumns = btns.length > 1 ? "1fr 1fr" : "1fr";
-  bar.innerHTML = btns.join("");
-  bar.querySelectorAll("[data-ex]").forEach((b) =>
-    (b.onclick = () => (b.dataset.ex === "appraise" ? runAppraise(b) : runDiagnose(b))));
+  bar.innerHTML = btns
+    .map(([k, l], i) => {
+      const span = btns.length > 1 && btns.length % 2 === 1 && i === btns.length - 1 ? ' style="grid-column:1/-1"' : "";
+      return `<button class="exbtn" data-ex="${k}"${span}>${l}</button>`;
+    })
+    .join("");
+  const run = { appraise: runAppraise, diagnose: runDiagnose, edible: runEdible };
+  bar.querySelectorAll("[data-ex]").forEach((b) => (b.onclick = () => run[b.dataset.ex](b)));
+}
+
+async function runEdible(btn) {
+  const d = currentResult;
+  if (btn) { btn.disabled = true; btn.textContent = "Checking…"; }
+  try {
+    const r = await fetch("/edible", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ species: d.species, common_name: d.common_name || "" }),
+    });
+    if (!r.ok) throw new Error();
+    d.edible = (await r.json()).edible;
+    await persistResultIfSaved();
+    render(d);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = "🌿 Edible & foraging — retry"; }
+  }
 }
 
 // auto-load the propagation diagram in the background (deferred from the fast core pass)

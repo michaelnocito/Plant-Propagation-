@@ -46,22 +46,10 @@ Return ONLY a JSON object (no markdown, no prose) with these exact keys:
     "water_short": "ONE short line (e.g. 'When top 2 in. dry — roughly weekly')",
     "humidity": "target range + how to raise it if needed",
     "feeding": "fertilizer type, strength, and season/cadence"
-  }},
-  "edible": {{
-    "status": "edible | parts_edible | not_edible | toxic",
-    "score": 0-10 integer (how worthwhile/palatable to eat; 0 if not edible or toxic),
-    "summary": "one honest line — what's edible, or why you shouldn't eat it",
-    "edible_parts": "which parts are edible AND which to avoid (empty if none edible)",
-    "forage": "the EASIEST beginner way + best season to find/harvest it (empty if not edible)",
-    "prepare": "the EASIEST beginner way to prepare/eat it (empty if not edible)",
-    "caution": "the real safety risks: toxic parts, poisonous LOOKALIKES, must-cook, raw toxicity, limits"
   }}
 }}
 
 LIGHT & TEMPERATURE must be RANGES with a real thriving zone — never a vague "low light".
-EDIBLE — conservative and safety-first: any toxic part -> status "toxic"/"parts_edible" with a clear
-warning (danger to kids/pets); if unsure it's safely edible use "not_edible"; ALWAYS fill "caution"
-(toxic parts, poisonous lookalikes). Never imply a photo ID is enough to eat a wild plant.
 Order steps/care for a beginner. Output JSON only."""
 
 # --- APPRAISE: resale pricing (text-only, on-demand) ---
@@ -142,6 +130,35 @@ async def appraise_plant(species: str, common: str) -> dict:
     msg = await client.messages.create(
         model=MODEL, max_tokens=700,
         messages=[{"role": "user", "content": APPRAISE_PROMPT.format(species=species, common=common)}],
+    )
+    return _parse(msg)
+
+
+# --- EDIBLE: foraging / kitchen (text-only, on-demand) ---
+EDIBLE_PROMPT = """Is a {common} ({species}) edible? Be conservative and safety-first.
+
+Return ONLY a JSON object (no markdown) with this exact shape:
+{{
+  "edible": {{
+    "status": "edible | parts_edible | not_edible | toxic",
+    "score": 0-10 integer (how worthwhile/palatable to eat; 0 if not edible or toxic),
+    "summary": "one honest line — what's edible, or why you shouldn't eat it",
+    "edible_parts": "which parts are edible AND which to avoid (empty if none edible)",
+    "forage": "the EASIEST beginner way + best season to find/harvest it (empty if not edible)",
+    "prepare": "the EASIEST beginner way to prepare/eat it (empty if not edible)",
+    "caution": "the real safety risks: toxic parts, poisonous LOOKALIKES, must-cook, raw toxicity, limits"
+  }}
+}}
+Any toxic part -> status "toxic"/"parts_edible" with a clear warning (danger to kids/pets). If unsure
+it's safely edible use "not_edible". ALWAYS fill "caution". Never imply a photo ID is enough to eat a
+wild plant. Output JSON only."""
+
+
+async def edible_plant(species: str, common: str) -> dict:
+    """On-demand edibility / foraging info -> {edible}."""
+    msg = await client.messages.create(
+        model=MODEL, max_tokens=900,
+        messages=[{"role": "user", "content": EDIBLE_PROMPT.format(species=species, common=common or species)}],
     )
     return _parse(msg)
 
