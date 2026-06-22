@@ -101,6 +101,7 @@ def _out(p: Plant) -> PlantOut:
         in_market=p.in_market,
         sold=p.sold,
         props_in_progress=p.props_in_progress,
+        cost=p.cost,
         created_at=p.created_at.isoformat(),
     )
 
@@ -135,6 +136,7 @@ async def save_plant(body: PlantIn, x_user: str | None = Header(default=None)):
             ai_result=json.dumps(body.ai_result),
             thumbnail=body.thumbnail,
             in_market=body.in_market,
+            cost=max(0.0, body.cost or 0.0),
         )
         s.add(p)
         await s.commit()
@@ -194,6 +196,8 @@ async def update_plant(plant_id: int, body: PlantPatch, x_user: str | None = Hea
             p.sold = body.sold
         if body.props_in_progress is not None:
             p.props_in_progress = max(0, min(999, body.props_in_progress))
+        if body.cost is not None:
+            p.cost = max(0.0, body.cost)
         if body.thumbnail is not None:
             p.thumbnail = body.thumbnail
         await s.commit()
@@ -530,6 +534,7 @@ async def backup():
                     "nickname": p.nickname, "species": p.species, "common_name": p.common_name,
                     "ai_result": json.loads(p.ai_result), "thumbnail": p.thumbnail,
                     "in_market": p.in_market, "sold": p.sold, "props_in_progress": p.props_in_progress,
+                    "cost": p.cost,
                     "photos": [
                         {"data": ph.data, "thumb": ph.thumb, "caption": ph.caption,
                          "is_cover": ph.is_cover, "uploaded_by": ph.uploaded_by}
@@ -571,6 +576,7 @@ async def restore(body: dict):
                 ai_result=json.dumps(p.get("ai_result", {})), thumbnail=p.get("thumbnail", ""),
                 in_market=bool(p.get("in_market")), sold=bool(p.get("sold")),
                 props_in_progress=int(p.get("props_in_progress", 0) or 0),
+                cost=float(p.get("cost", 0) or 0),
             )
             s.add(plant)
             await s.flush()

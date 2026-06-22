@@ -112,6 +112,7 @@ class PlantIn(BaseModel):
     ai_result: dict  # the full PropResult payload as saved
     thumbnail: str = ""  # small base64 data URI
     in_market: bool = False  # listed on the family marketplace
+    cost: float = 0.0  # what we paid for it
 
 
 class PlantPatch(BaseModel):
@@ -121,6 +122,7 @@ class PlantPatch(BaseModel):
     in_market: bool | None = None
     sold: bool | None = None
     props_in_progress: int | None = None
+    cost: float | None = None
     thumbnail: str | None = None  # replace / clear the photo
 
 
@@ -160,6 +162,7 @@ class PlantOut(BaseModel):
     in_market: bool
     sold: bool
     props_in_progress: int
+    cost: float
     created_at: str
 
 

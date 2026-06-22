@@ -54,7 +54,7 @@ function showTab(name) {
   document.querySelectorAll("nav.tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
   if (name === "mine") loadMine();
   if (name === "family") loadFamily();
-  if (name === "market") loadMarket();
+  if (name === "market") showMarketView(marketView);
   if (name === "soil") loadSoil();
 }
 
@@ -215,6 +215,10 @@ function renderSavebar() {
         <span>🌱 Propagations rooting</span>
         <span class="stepper"><button id="propMinus" aria-label="fewer">−</button><b id="propN">${p.props_in_progress}</b><button id="propPlus" aria-label="more">+</button></span>
       </div>
+      <div class="mline" style="margin-top:11px">
+        <span>💰 What we paid</span>
+        <span class="paidwrap">$<input class="paidinp" id="costInp" type="number" inputmode="decimal" placeholder="0" value="${p.cost ? p.cost : ""}" /></span>
+      </div>
       <div class="mline2">
         <button class="mgbtn ${p.sold ? "on" : ""}" id="soldBtn">${p.sold ? "↩ Mark available" : "✓ Mark as sold"}</button>
       </div>
@@ -228,6 +232,7 @@ function renderSavebar() {
   $("soldBtn").onclick = () => patch({ sold: !currentSaved.sold });
   $("propMinus").onclick = () => stepProps(-1);
   $("propPlus").onclick = () => stepProps(1);
+  $("costInp").onblur = (e) => patch({ cost: parseFloat(e.target.value) || 0 }, false);
   $("delBtn").onclick = doDelete;
 }
 
@@ -846,25 +851,66 @@ function setSoilView(v) {
   soilView = v;
   $("soil-recipes").style.display = v === "recipes" ? "block" : "none";
   $("soil-packs").style.display = v === "packs" ? "block" : "none";
-  $("soil-profit").style.display = v === "profit" ? "block" : "none";
   document.querySelectorAll("#soil-toggle button").forEach((b) => b.classList.toggle("on", b.dataset.soil === v));
   if (v === "packs") loadSoilPacks();
+}
+
+/* ---------- global profit (Market → Profit): plant ROI + soil calc ---------- */
+const money = (n) => (n < 0 ? "−$" : "$") + Math.abs(n).toFixed(2);
+const range$ = (a, b) => (a === b ? money(a) : `${money(a)}–${money(b)}`);
+
+let marketView = "listings";
+function showMarketView(v) {
+  marketView = v;
+  $("market-listings").style.display = v === "listings" ? "block" : "none";
+  $("market-profit").style.display = v === "profit" ? "block" : "none";
+  document.querySelectorAll("#market-toggle button").forEach((b) => b.classList.toggle("on", b.dataset.mkt === v));
+  if (v === "listings") loadMarket();
   if (v === "profit") renderProfit();
 }
 
-/* ---------- profit calculator ---------- */
-const money = (n) => (n < 0 ? "−$" : "$") + Math.abs(n).toFixed(2);
-function renderProfit() {
-  $("soil-profit").innerHTML = `<div class="calc">
-    <label>Total materials cost ($)</label>
-    <input id="cMat" type="number" inputmode="decimal" placeholder="e.g. 18" />
-    <div class="two">
-      <div><label>Bags you'll make</label><input id="cBags" type="number" inputmode="numeric" placeholder="e.g. 12" /></div>
-      <div><label>Price per bag ($)</label><input id="cPrice" type="number" inputmode="decimal" placeholder="e.g. 9" /></div>
-    </div>
-    <div class="calc-out" id="cOut"></div>
-  </div>
-  <p class="mkt-sub" style="margin-top:12px">Tip: a quart bag's ingredients usually run ~$1–2; pricing at ~3× materials lands in the $4–6/qt buyers expect.</p>`;
+async function renderProfit() {
+  const box = $("market-profit");
+  box.innerHTML = `<div class="empty">Loading…</div>`;
+  let plants = [];
+  if (me) {
+    try { plants = await (await fetch("/plants/mine", { headers: { "X-User": me } })).json(); } catch (e) { /* empty */ }
+  }
+  let invested = 0, potMin = 0, potMax = 0;
+  const rows = plants.map((p) => {
+    const a = p.ai_result || {}, m = a.marketability || {}, e = a.established || null;
+    const cut = parseRange(m.est_price_range);
+    const pot = e ? parseRange(e.est_price_range) : [0, 0];
+    const cost = p.cost || 0;
+    invested += cost; potMin += pot[0]; potMax += pot[1];
+    return { name: p.nickname || p.common_name || p.species, cost, cut, pot, sold: p.sold };
+  });
+  const roiRows = rows.length
+    ? rows.map((r) => `<div class="roi">
+        <div><div class="rn2">${esc(r.name)}</div>
+          <div class="rsub2">Paid ${money(r.cost)}${r.cut[1] ? ` · cuttings ${range$(r.cut[0], r.cut[1])}/ea` : ""}</div></div>
+        <div class="rprof"><div>pot &amp; sell</div><div class="rp">${range$(r.pot[0] - r.cost, r.pot[1] - r.cost)}</div></div>
+      </div>`).join("")
+    : `<div class="galempty">No saved plants yet. Save a plant and set <b>What we paid</b> on it.</div>`;
+  const netMin = potMin - invested, netMax = potMax - invested;
+  box.innerHTML =
+    `<h3 class="sec-h">Plant ROI — buy → pot &amp; sell</h3>${roiRows}` +
+    `<div class="calc-out" style="border:none;margin-top:8px">
+       <div class="calc-row"><span>Total invested (${rows.length})</span><b>${money(invested)}</b></div>
+       <div class="calc-row"><span>Whole-plant potential</span><b>${range$(potMin, potMax)}</b></div>
+       <div class="calc-profit ${netMax >= 0 ? "pos" : "neg"}"><span class="pl">Potential profit</span><span class="pv">${range$(netMin, netMax)}</span></div>
+       <div class="calc-margin">selling them all potted, after what you paid</div>
+     </div>` +
+    `<h3 class="sec-h" style="margin-top:24px">Soil batch calculator</h3>
+     <div class="calc">
+       <label>Total materials cost ($)</label>
+       <input id="cMat" type="number" inputmode="decimal" placeholder="e.g. 18" />
+       <div class="two">
+         <div><label>Bags you'll make</label><input id="cBags" type="number" inputmode="numeric" placeholder="e.g. 12" /></div>
+         <div><label>Price per bag ($)</label><input id="cPrice" type="number" inputmode="decimal" placeholder="e.g. 9" /></div>
+       </div>
+       <div class="calc-out" id="cOut"></div>
+     </div>`;
   ["cMat", "cBags", "cPrice"].forEach((id) => ($(id).oninput = calcProfit));
   calcProfit();
 }
@@ -1037,6 +1083,7 @@ $("galleryInput").onchange = (e) => { const f = [...e.target.files]; e.target.va
 $("lbClose").onclick = closeLightbox;
 $("lightbox").onclick = (e) => { if (e.target.id === "lightbox") closeLightbox(); };
 document.querySelectorAll("#soil-toggle button").forEach((b) => (b.onclick = () => setSoilView(b.dataset.soil)));
+document.querySelectorAll("#market-toggle button").forEach((b) => (b.onclick = () => showMarketView(b.dataset.mkt)));
 $("backupBtn").onclick = () => { window.location.href = "/backup"; };
 $("restoreBtn").onclick = () => $("restoreInput").click();
 $("restoreInput").onchange = async (e) => {

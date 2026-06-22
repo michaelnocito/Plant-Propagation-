@@ -508,6 +508,16 @@
   .calc-profit .pv{font-family:Georgia,serif; font-size:26px; font-weight:700}
   .calc-profit.pos .pv{color:#4a5a32} .calc-profit.neg .pv{color:var(--madder-d)}
   .calc-margin{text-align:right; font-size:12.5px; color:var(--sepia); margin-top:2px}
+  .paidwrap{font-size:15px; color:var(--inkg)}
+  .paidinp{width:74px; border:1px solid var(--rule); border-radius:8px; padding:7px 8px; font-size:15px;
+    background:var(--paper); color:var(--inkg); font-family:inherit; text-align:right}
+  /* plant ROI rows */
+  .roi{display:flex; justify-content:space-between; gap:10px; align-items:center; padding:10px 0; border-bottom:1px dotted var(--rule-soft)}
+  .roi .rn2{font-size:14.5px; font-weight:600; color:var(--inkg)}
+  .roi .rsub2{font-size:11.5px; color:var(--sepia); margin-top:2px}
+  .roi .rprof{text-align:right; flex:none}
+  .roi .rprof > div:first-child{font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:var(--sepia2)}
+  .roi .rp{font-family:Georgia,serif; font-size:15px; color:var(--inkg)}
   /* soil lab */
   .recipe{background:var(--card); border:1px solid var(--rule); border-radius:10px; margin-bottom:10px; overflow:hidden; box-shadow:var(--sheet)}
   .recipe-h{padding:13px 14px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:10px}
@@ -553,6 +563,36 @@
   .empty svg{width:52px; height:52px; opacity:.5; display:block; margin:0 auto 10px; stroke:var(--inkg2)}
 
   @media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important}}
+
+  /* ================================================================
+     BRAND — Oscar · Violet · Blue
+     Violet = primary structure (was green), Blue = accent, green = thriving accent,
+     warm paper + brown = Oscar's earth. Terracotta kept only for danger/alarm.
+     ================================================================ */
+  :root{
+    --inkg:#453a61; --inkg2:#564a78;          /* VIOLET — primary text/structure (Violet) */
+    --blue:#3f5e86; --blue-d:#31496c;         /* BLUE — accent (Blue) */
+    --madder:#3f5e86; --madder-d:#31496c;     /* accent spots now resolve to blue */
+    --danger:#b0452c; --danger-d:#8f3621;     /* warm terracotta kept for danger/alarm only */
+    --sepia:#7c6a4d; --sepia2:#5c4d36;        /* warm brown labels — Oscar's earth */
+    --rule:rgba(69,58,97,.22); --rule-soft:rgba(69,58,97,.12);
+  }
+  body{background:
+    repeating-linear-gradient(0deg, rgba(69,58,97,.022) 0 1px, transparent 1px 27px),
+    radial-gradient(120% 85% at 50% -8%, #f4ecd9 0%, #ece0c9 55%, #e4d8bd 100%)}
+  /* danger/alarm stays warm */
+  .delbtn,.err,.caution .ct,.ed-badge.toxic,.sed.toxic,.mrow .ease-hard{color:var(--danger-d)}
+  .caution{border-left-color:var(--danger)}
+  .lz-cell.on b::before{color:#6f8456}        /* ✿ thriving = green accent */
+  /* blue sell-score "coin" (Blue) */
+  .mrow .opp .on{background:radial-gradient(circle at 35% 30%,#5e7ea8,var(--blue-d))}
+  /* violet tab spine, blue active indicator, violet picker ground */
+  nav.tabs button.on::before{background:var(--blue)}
+  .picker{background:radial-gradient(120% 80% at 50% 0%, #4a3f66, #36304e 60%, #2a2440)}
+  .who-card .av,.chip{box-shadow:0 3px 10px rgba(40,32,60,.3)}
+  /* brand credit on the picker */
+  .brand{color:rgba(244,238,222,.6); font-size:12px; letter-spacing:.4px; margin-top:14px; text-align:center}
+  .brand b{color:rgba(244,238,222,.85); font-weight:600}
 </style>
 </head>
 <body>
@@ -667,9 +707,16 @@
   <!-- MARKETPLACE -->
   <section id="view-market" class="view">
     <h2 class="vh">Marketplace</h2>
-    <p class="mkt-sub">Plants you've listed to sell — ranked for the easiest, most profitable wins.</p>
-    <div id="market-sort" class="filters"></div>
-    <div id="market-list"></div>
+    <div class="filters" id="market-toggle">
+      <button data-mkt="listings" class="on">Listings</button>
+      <button data-mkt="profit">Profit</button>
+    </div>
+    <div id="market-listings">
+      <p class="mkt-sub">Plants you've listed to sell — ranked for the easiest, most profitable wins.</p>
+      <div id="market-sort" class="filters"></div>
+      <div id="market-list"></div>
+    </div>
+    <div id="market-profit" style="display:none"></div>
   </section>
 
   <!-- SOIL LAB -->
@@ -679,11 +726,9 @@
     <div class="filters" id="soil-toggle">
       <button data-soil="recipes" class="on">Recipes</button>
       <button data-soil="packs">My batches</button>
-      <button data-soil="profit">Profit</button>
     </div>
     <div id="soil-recipes"></div>
     <div id="soil-packs" style="display:none"></div>
-    <div id="soil-profit" style="display:none"></div>
   </section>
 </main>
 
@@ -715,6 +760,7 @@
   <h2>Who's gardening?</h2>
   <p>Pick yourself — no password. You can switch anytime.</p>
   <div id="who-cards" class="who-cards"></div>
+  <p class="brand">An <b>Oscar · Violet · Blue</b> company 🐾</p>
 </div>
 
 <!-- hidden input for adding gallery photos (camera OR library) -->
