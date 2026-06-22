@@ -236,3 +236,51 @@ class SoilPackOut(BaseModel):
     in_market: bool
     sold: bool
     created_at: str
+
+
+# ---- seeds (tracked & sold like plants; AI market appraisal, no analysis) ----
+
+
+class SeedAppraiseIn(BaseModel):
+    name: str
+    notes: str = ""
+
+
+class SeedIn(BaseModel):
+    name: str
+    source: str = ""
+    quantity: str = ""
+    market: dict = {}
+    notes: str = ""
+    thumbnail: str = ""
+    visibility: str = "private"
+    in_market: bool = False
+
+
+class SeedPatch(BaseModel):
+    name: str | None = None
+    source: str | None = None
+    quantity: str | None = None
+    notes: str | None = None
+    thumbnail: str | None = None
+    visibility: str | None = None
+    in_market: bool | None = None
+    sold: bool | None = None
+    market: dict | None = None
+
+
+class SeedOut(BaseModel):
+    id: int
+    owner: str
+    owner_name: str
+    owner_color: str
+    name: str
+    source: str
+    quantity: str
+    market: dict
+    notes: str
+    thumbnail: str
+    visibility: str
+    in_market: bool
+    sold: bool
+    created_at: str

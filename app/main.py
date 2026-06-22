@@ -14,6 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from .claude import (
     appraise_plant,
+    appraise_seed,
     appraise_soil,
     diagnose_plant,
     diagram_plant,
@@ -21,7 +22,7 @@ from .claude import (
     enrich_core,
     sync_recipes,
 )
-from .db import MEMBERS, Photo, Plant, Session, SoilPack, User, get_user, init_db
+from .db import MEMBERS, Photo, Plant, Seed, Session, SoilPack, User, get_user, init_db
 from .models import (
     CATEGORIES,
     VISIBILITIES,
@@ -33,6 +34,10 @@ from .models import (
     PlantIn,
     PlantOut,
     PlantPatch,
+    SeedAppraiseIn,
+    SeedIn,
+    SeedOut,
+    SeedPatch,
     SoilAppraiseIn,
     SoilPackIn,
     SoilPackOut,
@@ -588,6 +593,121 @@ async def delete_soil(soil_id: int, x_user: str | None = Header(default=None)):
         return {"ok": True}
 
 
+# ---- seeds (tracked & sold like plants; AI market appraisal, no analysis) ----
+
+
+def _seed_out(sd: Seed) -> SeedOut:
+    return SeedOut(
+        id=sd.id, owner=sd.owner.slug, owner_name=sd.owner.display_name, owner_color=sd.owner.color,
+        name=sd.name, source=sd.source, quantity=sd.quantity, market=json.loads(sd.market or "{}"),
+        notes=sd.notes, thumbnail=sd.thumbnail, visibility=sd.visibility, in_market=sd.in_market,
+        sold=sd.sold, created_at=sd.created_at.isoformat(),
+    )
+
+
+@app.post("/seeds/appraise")
+async def seed_appraise(body: SeedAppraiseIn):
+    try:
+        return await appraise_seed(body.name, body.notes)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"Appraise failed: {e}") from e
+
+
+@app.post("/seeds", response_model=SeedOut)
+async def create_seed(body: SeedIn, x_user: str | None = Header(default=None)):
+    if body.visibility not in VISIBILITIES:
+        raise HTTPException(400, "Bad visibility.")
+    market = body.market
+    if not market:
+        try:
+            market = await appraise_seed(body.name, body.notes)
+        except Exception:  # noqa: BLE001
+            market = {}
+    async with Session() as s:
+        user = await _require_user(s, x_user)
+        sd = Seed(
+            owner_id=user.id, name=body.name.strip()[:120], source=body.source.strip()[:120],
+            quantity=body.quantity.strip()[:48], market=json.dumps(market), notes=body.notes.strip(),
+            thumbnail=body.thumbnail, visibility=body.visibility, in_market=body.in_market,
+        )
+        s.add(sd)
+        await s.commit()
+        await s.refresh(sd, ["owner"])
+        return _seed_out(sd)
+
+
+@app.get("/seeds/mine", response_model=list[SeedOut])
+async def my_seeds(x_user: str | None = Header(default=None)):
+    async with Session() as s:
+        user = await _require_user(s, x_user)
+        rows = (await s.execute(
+            select(Seed).options(selectinload(Seed.owner)).where(Seed.owner_id == user.id).order_by(Seed.created_at.desc())
+        )).scalars().all()
+        return [_seed_out(sd) for sd in rows]
+
+
+@app.get("/seeds/family", response_model=list[SeedOut])
+async def family_seeds():
+    async with Session() as s:
+        rows = (await s.execute(
+            select(Seed).options(selectinload(Seed.owner)).where(Seed.visibility == "family").order_by(Seed.created_at.desc())
+        )).scalars().all()
+        return [_seed_out(sd) for sd in rows]
+
+
+@app.get("/seeds/market", response_model=list[SeedOut])
+async def market_seeds():
+    async with Session() as s:
+        rows = (await s.execute(
+            select(Seed).options(selectinload(Seed.owner)).where(Seed.in_market.is_(True)).order_by(Seed.created_at.desc())
+        )).scalars().all()
+        return [_seed_out(sd) for sd in rows]
+
+
+@app.patch("/seeds/{seed_id}", response_model=SeedOut)
+async def update_seed(seed_id: int, body: SeedPatch, x_user: str | None = Header(default=None)):
+    async with Session() as s:
+        user = await _require_user(s, x_user)
+        sd = await s.get(Seed, seed_id)
+        if not sd or sd.owner_id != user.id:
+            raise HTTPException(404, "Not found.")
+        if body.name is not None:
+            sd.name = body.name.strip()[:120]
+        if body.source is not None:
+            sd.source = body.source.strip()[:120]
+        if body.quantity is not None:
+            sd.quantity = body.quantity.strip()[:48]
+        if body.notes is not None:
+            sd.notes = body.notes.strip()
+        if body.thumbnail is not None:
+            sd.thumbnail = body.thumbnail
+        if body.visibility is not None:
+            if body.visibility not in VISIBILITIES:
+                raise HTTPException(400, "Bad visibility.")
+            sd.visibility = body.visibility
+        if body.in_market is not None:
+            sd.in_market = body.in_market
+        if body.sold is not None:
+            sd.sold = body.sold
+        if body.market is not None:
+            sd.market = json.dumps(body.market)
+        await s.commit()
+        await s.refresh(sd, ["owner"])
+        return _seed_out(sd)
+
+
+@app.delete("/seeds/{seed_id}")
+async def delete_seed(seed_id: int, x_user: str | None = Header(default=None)):
+    async with Session() as s:
+        user = await _require_user(s, x_user)
+        sd = await s.get(Seed, seed_id)
+        if not sd or sd.owner_id != user.id:
+            raise HTTPException(404, "Not found.")
+        await s.delete(sd)
+        await s.commit()
+        return {"ok": True}
+
+
 # ---- backup / restore (full-data snapshot; survives redeploys) ----
 
 
@@ -599,6 +719,7 @@ async def backup():
             await s.execute(select(Plant).options(selectinload(Plant.owner), selectinload(Plant.photos)))
         ).scalars().all()
         soils = (await s.execute(select(SoilPack).options(selectinload(SoilPack.owner)))).scalars().all()
+        seeds = (await s.execute(select(Seed).options(selectinload(Seed.owner)))).scalars().all()
         data = {
             "version": 1,
             "plants": [
@@ -624,6 +745,14 @@ async def backup():
                     "in_market": sp.in_market, "sold": sp.sold,
                 }
                 for sp in soils
+            ],
+            "seeds": [
+                {
+                    "owner": sd.owner.slug, "name": sd.name, "source": sd.source, "quantity": sd.quantity,
+                    "market": json.loads(sd.market or "{}"), "notes": sd.notes, "thumbnail": sd.thumbnail,
+                    "visibility": sd.visibility, "in_market": sd.in_market, "sold": sd.sold,
+                }
+                for sd in seeds
             ],
         }
         return Response(
@@ -670,8 +799,19 @@ async def restore(body: dict):
                 in_market=bool(sp.get("in_market")), sold=bool(sp.get("sold")),
             ))
             n_soil += 1
+        n_seed = 0
+        for sd in body.get("seeds", []):
+            u = users.get(sd.get("owner"))
+            if not u:
+                continue
+            s.add(Seed(
+                owner_id=u.id, name=sd.get("name", ""), source=sd.get("source", ""), quantity=sd.get("quantity", ""),
+                market=json.dumps(sd.get("market", {})), notes=sd.get("notes", ""), thumbnail=sd.get("thumbnail", ""),
+                visibility=sd.get("visibility", "private"), in_market=bool(sd.get("in_market")), sold=bool(sd.get("sold")),
+            ))
+            n_seed += 1
         await s.commit()
-        return {"plants": n_plants, "soil": n_soil}
+        return {"plants": n_plants, "soil": n_soil, "seeds": n_seed}
 
 
 @app.get("/")

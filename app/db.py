@@ -106,6 +106,25 @@ class SoilPack(Base):
     owner: Mapped[User] = relationship()
 
 
+class Seed(Base):
+    """A seed variety we're growing/selling — tracked & sold like plants (photo + market value)."""
+
+    __tablename__ = "seeds"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    name: Mapped[str] = mapped_column(String(120), default="")  # variety, e.g. "Tomato 'Brandywine'"
+    source: Mapped[str] = mapped_column(String(120), default="")  # where they came from
+    quantity: Mapped[str] = mapped_column(String(48), default="")  # e.g. "1 packet", "~30 seeds"
+    market: Mapped[str] = mapped_column(Text, default="{}")  # JSON {score, demand, est_price_range, sell_notes}
+    notes: Mapped[str] = mapped_column(Text, default="")
+    thumbnail: Mapped[str] = mapped_column(Text, default="")
+    visibility: Mapped[str] = mapped_column(String(16), default="private")
+    in_market: Mapped[bool] = mapped_column(default=False)
+    sold: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+    owner: Mapped[User] = relationship()
+
+
 async def _ensure_columns(conn) -> None:
     """Tiny forward-only migration: add columns missing from an existing plants table
     (create_all only creates missing TABLES, not new columns on existing ones)."""

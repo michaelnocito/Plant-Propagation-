@@ -57,6 +57,7 @@ function showTab(name) {
   if (name === "family") loadFamily();
   if (name === "market") showMarketView(marketView);
   if (name === "soil") loadSoil();
+  if (name === "seed") loadSeeds();
 }
 
 /* ---------- identify ---------- */
@@ -462,6 +463,7 @@ function pcard(p) {
 /* ---------- marketplace ---------- */
 let marketRows = [];
 let marketSoil = [];
+let marketSeeds = [];
 let marketSort = "opp";
 let showSold = false;
 const EASE = { easy: 1, moderate: 0.6, hard: 0.35 };
@@ -492,12 +494,13 @@ async function loadMarket() {
   list.innerHTML = `<div class="empty">Loading…</div>`;
   try { marketRows = await (await fetch("/plants/market")).json(); } catch (e) { marketRows = []; }
   try { marketSoil = await (await fetch("/soil/market")).json(); } catch (e) { marketSoil = []; }
+  try { marketSeeds = await (await fetch("/seeds/market")).json(); } catch (e) { marketSeeds = []; }
   drawMarket();
 }
 
 function drawMarket() {
   const sortEl = $("market-sort"), list = $("market-list");
-  const soldCount = marketRows.filter((p) => p.sold).length + marketSoil.filter((s) => s.sold).length;
+  const soldCount = marketRows.filter((p) => p.sold).length + marketSoil.filter((s) => s.sold).length + marketSeeds.filter((s) => s.sold).length;
   sortEl.innerHTML =
     MSORTS.map(([k, l]) => `<button data-s="${k}" class="${marketSort === k ? "on" : ""}">${l}</button>`).join("") +
     `<button data-toggle="sold" class="${showSold ? "on" : ""}">${showSold ? "Hide sold" : `Show sold${soldCount ? ` (${soldCount})` : ""}`}</button>`;
@@ -505,14 +508,15 @@ function drawMarket() {
   const tog = sortEl.querySelector("button[data-toggle]");
   if (tog) tog.onclick = () => { showSold = !showSold; drawMarket(); };
 
-  if (!marketRows.length && !marketSoil.length) {
-    list.innerHTML = emptyState("Nothing listed yet.<br>List a plant (or soil batch) on the Marketplace.");
+  if (!marketRows.length && !marketSoil.length && !marketSeeds.length) {
+    list.innerHTML = emptyState("Nothing listed yet.<br>List a plant, soil batch, or seed on the Marketplace.");
     return;
   }
 
-  // running totals from AVAILABLE (unsold) listings — plants + soil
+  // running totals from AVAILABLE (unsold) listings — plants + soil + seeds
   const avail = marketRows.filter((p) => !p.sold);
   const availSoil = marketSoil.filter((s) => !s.sold);
+  const availSeeds = marketSeeds.filter((s) => !s.sold);
   let lo = 0, hi = 0, props = 0;
   avail.forEach((p) => {
     const a = p.ai_result || {};
@@ -520,9 +524,10 @@ function drawMarket() {
     lo += mn; hi += mx; props += p.props_in_progress || 0;
   });
   availSoil.forEach((s) => { const [mn, mx] = parseRange((s.market || {}).est_price_range); lo += mn; hi += mx; });
+  availSeeds.forEach((s) => { const [mn, mx] = parseRange((s.market || {}).est_price_range); lo += mn; hi += mx; });
   const stats = `<div class="mstats">
     <div class="mstat"><div class="mn">$${Math.round(lo)}–$${Math.round(hi)}</div><div class="ml">potential value</div></div>
-    <div class="mstat"><div class="mn">${avail.length + availSoil.length}</div><div class="ml">for sale</div></div>
+    <div class="mstat"><div class="mn">${avail.length + availSoil.length + availSeeds.length}</div><div class="ml">for sale</div></div>
     <div class="mstat"><div class="mn">${props}</div><div class="ml">props rooting</div></div>
   </div>`;
 
@@ -543,14 +548,36 @@ function drawMarket() {
   soilPool.sort((a, b) => (a.sold - b.sold) || ((b.market || {}).score || 0) - ((a.market || {}).score || 0));
   const soilHTML = soilPool.length ? `<div class="rsub" style="margin:18px 0 8px">Soil mixes</div>` + soilPool.map(soilMarketRow).join("") : "";
 
-  const body = plantHTML + soilHTML;
+  // seeds
+  const seedPool = (showSold ? marketSeeds : availSeeds).slice();
+  seedPool.sort((a, b) => (a.sold - b.sold) || ((b.market || {}).score || 0) - ((a.market || {}).score || 0));
+  const seedHTML = seedPool.length ? `<div class="rsub" style="margin:18px 0 8px">Seeds</div>` + seedPool.map(seedMarketRow).join("") : "";
+
+  const body = plantHTML + soilHTML + seedHTML;
   list.innerHTML = stats + (body || `<div class="empty">Nothing for sale right now.</div>`);
   list.querySelectorAll(".mrow[data-soil]").forEach((el) => (el.onclick = () => {
     const sp = marketSoil.find((s) => s.id == el.dataset.soil);
     if (sp) openSoil(sp);
   }));
-  [...list.querySelectorAll(".mrow:not([data-soil])")].forEach((el, i) =>
+  list.querySelectorAll(".mrow[data-seed]").forEach((el) => (el.onclick = () => {
+    const sd = marketSeeds.find((s) => s.id == el.dataset.seed);
+    if (sd) openSeed(sd);
+  }));
+  [...list.querySelectorAll(".mrow:not([data-soil]):not([data-seed])")].forEach((el, i) =>
     (el.onclick = () => showResult(rows[i].p.ai_result, rows[i].p, rows[i].p.thumbnail)));
+}
+
+function seedMarketRow(sd) {
+  const m = sd.market || {}, owner = memberBy(sd.owner);
+  const img = sd.thumbnail ? `<img class="mph" src="${sd.thumbnail}" alt="">` : `<div class="mnoph">🌰</div>`;
+  return `<div class="mrow seed${sd.sold ? " sold" : ""}" data-seed="${sd.id}">${img}
+    <div>
+      <div class="mname">${esc(sd.name)} <span class="owndot" style="background:${owner.color}" title="${esc(owner.display_name)}">${esc((owner.display_name[0] || "?").toUpperCase())}</span>${sd.sold ? ` <span class="soldtag">Sold</span>` : ""}</div>
+      <div class="msp">Seeds${sd.quantity ? ` · ${esc(sd.quantity)}` : ""}</div>
+      <div class="mtags"><span>💲 <b>${esc(m.est_price_range || "—")}</b></span>${m.demand ? `<span>${esc(cap(m.demand))} demand</span>` : ""}</div>
+    </div>
+    <div class="opp"><div class="on">${(m.score || "–")}</div><div class="ol">sell score</div></div>
+  </div>`;
 }
 
 function soilMarketRow(sp) {
@@ -1388,6 +1415,96 @@ function renderSoilDetail() {
   }
 }
 
+/* ================= SEEDS ================= */
+let seeds = [];
+let currentSeed = null;
+
+async function loadSeeds() {
+  if (!me) return showPicker();
+  const box = $("seed-list");
+  box.innerHTML = `<button class="soilnew" id="seedNew">＋ New seed variety</button><div class="empty">Loading…</div>`;
+  try { seeds = await (await fetch("/seeds/mine", { headers: { "X-User": me } })).json(); } catch (e) { seeds = []; }
+  drawSeeds();
+}
+function drawSeeds() {
+  const box = $("seed-list");
+  let html = `<button class="soilnew" id="seedNew">＋ New seed variety</button>`;
+  html += seeds.length ? seeds.map(seedCard).join("") : emptyState("No seeds yet.<br>Tap <b>New seed variety</b> to add one.");
+  box.innerHTML = html;
+  $("seedNew").onclick = newSeed;
+  box.querySelectorAll(".spack").forEach((el, i) => (el.onclick = () => openSeed(seeds[i])));
+}
+function seedCard(sd) {
+  const m = sd.market || {};
+  const img = sd.thumbnail ? `<img class="sph" src="${sd.thumbnail}" alt="">` : `<div class="snoph">🌰</div>`;
+  const badges = `${sd.in_market ? '<span class="sb market">Listed</span>' : ""}${sd.sold ? '<span class="sb sold">Sold</span>' : ""}`;
+  return `<div class="spack">${img}<div>
+    <div class="snm">${esc(sd.name)}</div>
+    <div class="ssz">${esc(sd.quantity || "")}${m.score ? ` · sell ${m.score}/10` : ""}</div>
+    ${badges ? `<div class="sbadges">${badges}</div>` : ""}</div>
+    <div class="sprice">${m.est_price_range ? `<b>${esc(m.est_price_range)}</b>` : ""}</div></div>`;
+}
+async function newSeed() {
+  if (!me) return showPicker();
+  const name = prompt("Seed variety (e.g. Tomato 'Brandywine'):");
+  if (!name) return;
+  const btn = $("seedNew");
+  if (btn) { btn.disabled = true; btn.textContent = "Adding & pricing…"; }
+  let sd = null;
+  try {
+    const r = await fetch("/seeds", { method: "POST", headers: { "Content-Type": "application/json", "X-User": me },
+      body: JSON.stringify({ name, quantity: "1 packet", visibility: "private", in_market: false }) });
+    if (r.ok) sd = await r.json();
+  } catch (e) { /* handled below */ }
+  if (btn) { btn.disabled = false; btn.textContent = "＋ New seed variety"; }
+  if (sd) openSeed(sd); else alert("Couldn't add that — try again.");
+}
+function openSeed(sd) { currentSeed = sd; renderSeedDetail(); $("seedDetail").classList.add("on"); }
+function closeSeed() { $("seedDetail").classList.remove("on"); loadSeeds(); }
+async function seedPatch(fields, rerender = true) {
+  try {
+    const r = await fetch("/seeds/" + currentSeed.id, { method: "PATCH", headers: { "Content-Type": "application/json", "X-User": me }, body: JSON.stringify(fields) });
+    if (r.ok) { currentSeed = await r.json(); if (rerender) renderSeedDetail(); }
+  } catch (e) { /* keep UI */ }
+}
+async function seedDelete() {
+  if (!confirm("Delete this seed variety?")) return;
+  await fetch("/seeds/" + currentSeed.id, { method: "DELETE", headers: { "X-User": me } });
+  closeSeed();
+}
+function renderSeedDetail() {
+  const sd = currentSeed, m = sd.market || {}, mine = sd.owner === me, owner = memberBy(sd.owner);
+  let html = `<h2 class="vh" style="margin:2px 0 2px">${esc(sd.name)}</h2>
+    <div class="ssz" style="margin-bottom:12px">${esc(sd.quantity || "")}${sd.source ? ` · ${esc(sd.source)}` : ""} · by ${esc(owner.display_name)}</div>`;
+  if (sd.thumbnail) html += `<img src="${sd.thumbnail}" style="width:100%;max-height:240px;object-fit:cover;border-radius:12px;border:1px solid var(--rule)" alt="">`;
+  html += `<div class="rcard" style="margin-top:14px"><div class="rh"><span class="rt">Market value</span><span class="rs">${m.score ?? "–"}<small>/10</small></span></div>
+    <div class="price">${esc(m.est_price_range || "—")}</div>
+    <div class="meta">${m.demand ? esc(cap(m.demand)) + " demand" : ""}</div>
+    ${m.sell_notes ? `<div class="notes">${esc(m.sell_notes)}</div>` : ""}</div>`;
+  if (mine) {
+    html += `<div class="savedrow" style="margin-top:16px">
+      <div class="who">Manage</div>
+      <div class="seg" id="seedVis"><button data-v="private" class="${sd.visibility === "private" ? "on" : ""}">Private</button><button data-v="family" class="${sd.visibility === "family" ? "on" : ""}">Family</button></div>
+      <input class="nick" id="seedQty" placeholder="Quantity (e.g. 1 packet)" value="${esc(sd.quantity)}" />
+      <input class="nick" id="seedSrc" placeholder="Source (optional)" value="${esc(sd.source)}" style="margin-top:8px" />
+      <button class="mktbtn ${sd.in_market ? "on" : ""}" id="seedMkt">${sd.in_market ? "✓ Listed on Marketplace" : "＋ List on Marketplace"}</button>
+      <div class="mline2"><button class="mgbtn ${sd.sold ? "on" : ""}" id="seedSold">${sd.sold ? "↩ Mark available" : "✓ Mark as sold"}</button></div>
+      <div class="mline2"><button class="link" id="seedPhoto">${sd.thumbnail ? "Change photo" : "Add photo"}</button></div>
+      <button class="delbtn" id="seedDel">Delete seed</button>
+    </div>`;
+  }
+  $("seedBody").innerHTML = html;
+  if (mine) {
+    $("seedVis").querySelectorAll("button").forEach((b) => (b.onclick = () => seedPatch({ visibility: b.dataset.v })));
+    $("seedQty").onblur = (e) => seedPatch({ quantity: e.target.value }, false);
+    $("seedSrc").onblur = (e) => seedPatch({ source: e.target.value }, false);
+    $("seedMkt").onclick = () => seedPatch({ in_market: !currentSeed.in_market });
+    $("seedSold").onclick = () => seedPatch({ sold: !currentSeed.sold });
+    $("seedPhoto").onclick = () => $("seedPhotoInput").click();
+    $("seedDel").onclick = seedDelete;
+  }
+}
+
 /* ---------- boot ---------- */
 chip.onclick = showPicker;
 document.querySelectorAll("nav.tabs button").forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
@@ -1420,6 +1537,12 @@ $("soilPhotoInput").onchange = async (e) => {
   const f = e.target.files[0]; e.target.value = "";
   if (!f || !currentSoil) return;
   await soilPatch({ thumbnail: await thumbDataURL(f) });
+};
+$("seedClose").onclick = closeSeed;
+$("seedPhotoInput").onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f || !currentSeed) return;
+  await seedPatch({ thumbnail: await thumbDataURL(f) });
 };
 
 (async function init() {

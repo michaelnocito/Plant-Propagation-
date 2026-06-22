@@ -67,6 +67,7 @@ _Last full content review: 2026-06-22 (initial build)._
 ---
 
 ## 📋 Backlog (not yet scheduled)
+- **Drop the private/family visibility choice — default everything to Family.** For a 2-person household the toggle is just friction; make all plants/soil/seeds shared (Family) by default and remove the Private/Family control. (Requested 2026-06.)
 - Propagation tracking v2 — stages (cutting→rooting→rooted→potted) + **expected-ready dates** for "sellable in N weeks"
 - Dated **photo timeline** (multiple progress photos over time; today it's a gallery)
 - **Editable species** — correct a wrong AI ID without losing history

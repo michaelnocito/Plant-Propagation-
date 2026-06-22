@@ -248,6 +248,28 @@ Return ONLY a JSON object (no markdown) with these exact keys:
 Price from the bag size and ingredient cost (bark, pumice, charcoal, worm castings raise value; plain peat/coir is cheap). Output JSON only."""
 
 
+SEED_PROMPT = """You price a packet of plant SEEDS for resale (Etsy / FB Marketplace / seed swaps).
+Variety: {name}
+Notes: {notes}
+
+Return ONLY a JSON object (no markdown) with these exact keys:
+{{
+  "score": 1-10 integer (how sellable these seeds are — rare/heirloom/in-demand varieties score high; common cheap ones low),
+  "demand": "low | medium | high",
+  "est_price_range": "realistic price per packet, e.g. $2-5",
+  "sell_notes": "one line: who buys it + best venue + a pricing/listing tip"
+}}
+Price from rarity, demand, and seed count. Output JSON only."""
+
+
+async def appraise_seed(name: str, notes: str) -> dict:
+    msg = await client.messages.create(
+        model=MODEL, max_tokens=400,
+        messages=[{"role": "user", "content": SEED_PROMPT.format(name=name or "plant seeds", notes=notes or "—")}],
+    )
+    return _parse(msg)
+
+
 async def appraise_soil(name: str, size: str, recipe: dict) -> dict:
     ings = ", ".join(
         f"{(i.get('parts') or '').strip()} {(i.get('name') or '').strip()}".strip()
