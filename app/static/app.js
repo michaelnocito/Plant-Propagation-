@@ -229,6 +229,7 @@ function renderSavebar() {
       </div>
     </div>
     <button class="delbtn" id="delBtn">Remove from my plants</button>
+    <button class="syncbtn" id="plantSyncBtn">↻ Sync to server</button>
   </div>`;
   $("catSel").onchange = (e) => patch({ category: e.target.value }, false);
   $("nickInp").onblur = (e) => patch({ nickname: e.target.value }, false);
@@ -238,6 +239,29 @@ function renderSavebar() {
   $("propPlus").onclick = () => stepProps(1);
   $("costInp").onblur = (e) => patch({ cost: parseFloat(e.target.value) || 0 }, false);
   $("delBtn").onclick = doDelete;
+  $("plantSyncBtn").onclick = () => runSync($("plantSyncBtn"));
+}
+
+async function runSync(btn) {
+  if (!currentSaved) return;
+  btn.disabled = true;
+  btn.textContent = "↻ Syncing…";
+  try {
+    const r = await fetch(`/plants/${currentSaved.id}/sync`, {
+      method: "POST", headers: { "X-User": me },
+    });
+    if (!r.ok) throw new Error();
+    const updated = await r.json();
+    currentSaved = updated;
+    currentResult = updated.ai_result;
+    render(currentResult);
+    renderSavebar();
+    btn.textContent = "✓ Synced";
+    setTimeout(() => { if ($("plantSyncBtn")) $("plantSyncBtn").textContent = "↻ Sync to server"; }, 2000);
+  } catch {
+    btn.disabled = false;
+    btn.textContent = "↻ Sync failed — retry";
+  }
 }
 
 async function doSave(inMarket) {

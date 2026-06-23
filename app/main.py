@@ -261,6 +261,27 @@ async def update_plant(plant_id: int, body: PlantPatch, x_user: str | None = Hea
         return _out(p)
 
 
+@app.post("/plants/{plant_id}/sync")
+async def sync_plant(plant_id: int, x_user: str | None = Header(default=None)):
+    """Re-run enrich_core for a saved plant and merge with existing on-demand fields."""
+    async with Session() as s:
+        _user, p = await _owned_plant(s, plant_id, x_user)
+        try:
+            result = await enrich_core(p.species, p.common_name)
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(502, f"Sync failed: {e}") from e
+        # Preserve on-demand fields already generated for this plant
+        existing = json.loads(p.ai_result) if p.ai_result else {}
+        merged = result.model_dump()
+        for key in ("marketability", "established", "diagnosis", "edible", "diagram_svg", "confidence"):
+            if existing.get(key) is not None:
+                merged[key] = existing[key]
+        p.ai_result = json.dumps(merged)
+        await s.commit()
+        await s.refresh(p, ["owner"])
+        return _out(p)
+
+
 @app.get("/plants/market", response_model=list[PlantOut])
 async def market_plants():
     """Every plant either owner has listed on the marketplace."""
