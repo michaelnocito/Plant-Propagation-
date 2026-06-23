@@ -163,7 +163,25 @@
   .delbtn{background:none; border:none; color:#b34a2c; font-size:13px; cursor:pointer; margin-top:10px;
     text-decoration:underline}
   /* collection grid */
-  .filters{display:flex; gap:8px; overflow-x:auto; padding:4px 0 12px; -webkit-overflow-scrolling:touch}
+  .filters{display:flex; flex-direction:column; gap:4px; padding:4px 0 12px}
+  .psearch{width:100%; box-sizing:border-box; padding:8px 12px; border:1.5px solid var(--line); border-radius:8px; font-size:.9rem; background:var(--paper2); color:var(--ink); margin-bottom:2px}
+  .psearch::placeholder{color:var(--muted)}
+  .frow{display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:2px 0; scrollbar-width:none}
+  .frow::-webkit-scrollbar{display:none}
+  .flabel{flex:none; font-size:.85rem; align-self:center; opacity:.65}
+  .fpill{flex:none; border:1px solid var(--line); background:var(--ink2); color:var(--muted); padding:5px 11px; border-radius:20px; font-size:.78rem; white-space:nowrap; cursor:pointer}
+  .fpill.on{background:var(--inkg); color:var(--paper); border-color:var(--inkg); font-weight:600}
+  #value-chip{margin:0 0 8px}
+  .vchip{background:linear-gradient(135deg,var(--inkg),var(--blue)); color:#fff; border-radius:12px; padding:12px 16px}
+  .vchip-row{display:flex; align-items:center; gap:10px}
+  .vchip-icon{font-size:1.4rem; line-height:1; flex:none}
+  .vchip-vals{flex:1; display:flex; flex-direction:column; gap:3px}
+  .vchip-line{display:flex; align-items:baseline; gap:8px}
+  .vchip-type{font-size:.72rem; opacity:.8; min-width:70px}
+  .vchip-range{font-size:1rem; font-weight:700}
+  .vchip-score{font-size:2rem; font-weight:800; line-height:1; flex:none}
+  .vchip-denom{font-size:.75rem; opacity:.7; font-weight:400}
+  .vchip-sub{font-size:.73rem; opacity:.8; margin-top:6px}
   .filters button{flex:none; border:1px solid var(--line); background:var(--ink2); color:var(--muted);
     border-radius:999px; padding:7px 13px; font-size:13px; cursor:pointer}
   .filters button.on{background:var(--sage); color:var(--ink); border-color:var(--sage); font-weight:600}
@@ -400,8 +418,8 @@
   .soldtag{background:var(--sepia); color:var(--paper)}
 
   /* filter / sort chips */
-  .filters button{background:var(--paper2); border:1px solid var(--rule); color:var(--sepia2)}
-  .filters button.on{background:var(--inkg); color:var(--paper); border-color:var(--inkg);
+  .filters button,.fpill{background:var(--paper2); border:1px solid var(--rule); color:var(--sepia2)}
+  .filters button.on,.fpill.on{background:var(--inkg); color:var(--paper); border-color:var(--inkg);
     box-shadow:0 2px 6px rgba(34,57,43,.3)}
 
   /* plant grid specimen cards */
@@ -669,6 +687,9 @@
           <button data-mode="detail" class="on">Detail</button>
         </div>
       </div>
+
+      <!-- value chip — populated by renderResale once price is checked -->
+      <div id="value-chip" style="display:none"></div>
 
       <!-- on-demand pricing / health actions — right under the title, before manage -->
       <div id="extras" class="extras" style="display:none"></div>

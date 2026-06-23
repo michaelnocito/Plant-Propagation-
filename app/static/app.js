@@ -20,6 +20,9 @@ let lastPhotoData = "";     // ~1024px data URI of the just-taken photo (seeds t
 let lastBlob = null;        // the just-analyzed image blob (for on-demand health check)
 let mineRows = [], familyRows = [];
 const filterState = { mine: "all", family: "all" };
+const searchState = { mine: "", family: "" };
+const lightState  = { mine: "any", family: "any" };
+const soilState   = { mine: "any", family: "any" };
 
 const memberBy = (slug) => members.find((m) => m.slug === slug) || { display_name: slug || "?", color: "#7fa07a", slug };
 const isMember = (slug) => members.some((m) => m.slug === slug);
@@ -419,17 +422,60 @@ async function loadFamily() {
   drawCollection("family", familyRows);
 }
 
+function lightBucket(p) {
+  const c = p.ai_result?.care?.light;
+  if (!c) return "unknown";
+  const s = `${c.floor||""} ${c.thriving||""} ${c.ceiling||""}`.toLowerCase();
+  if (/direct|full sun|bright direct/.test(s)) return "direct";
+  if (/bright indirect|medium indirect|moderate/.test(s)) return "indirect";
+  if (/low|dim|shade/.test(s)) return "low";
+  return "unknown";
+}
+function soilBucket(p) {
+  const s = `${p.ai_result?.care?.soil_short||""} ${p.ai_result?.care?.soil_diy||""}`.toLowerCase();
+  if (/cactus|succulent|grit|sand/.test(s)) return "gritty";
+  if (/aroid|orchid|bark|chunky|epiphyte/.test(s)) return "chunky";
+  if (/moisture|peat|fern|calathea|tropical/.test(s)) return "moisture";
+  if (/standard|all.purpose|potting|general/.test(s)) return "standard";
+  return "unknown";
+}
+
 function drawCollection(view, rows) {
-  const grid = $(view + "-grid"), filt = $(view + "-filters");
+  const filt = $(view + "-filters");
   const present = CATS.map((c) => c[0]).filter((c) => rows.some((r) => r.category === c));
   const cats = ["all", ...present];
   if (!present.length) filterState[view] = "all";
-  filt.innerHTML = cats
-    .map((c) => `<button data-c="${c}" class="${filterState[view] === c ? "on" : ""}">${c === "all" ? "All" : catLabel(c)}</button>`)
-    .join("");
-  filt.querySelectorAll("button").forEach((b) => (b.onclick = () => { filterState[view] = b.dataset.c; drawCollection(view, rows); }));
 
-  const shown = rows.filter((r) => filterState[view] === "all" || r.category === filterState[view]);
+  const LIGHTS = [["any","Any light"],["low","Low / Shade"],["indirect","Bright Indirect"],["direct","Direct Sun"]];
+  const SOILS  = [["any","Any soil"],["standard","Standard"],["chunky","Chunky / Aroid"],["moisture","Moisture-loving"],["gritty","Gritty / Cactus"]];
+
+  filt.innerHTML =
+    `<input class="psearch" id="${view}-search" type="search" placeholder="🔍 Search plants…" value="${esc(searchState[view])}" />` +
+    `<div class="frow">${cats.map((c) => `<button data-c="${c}" class="fpill ${filterState[view]===c?"on":""}">${c==="all"?"All":catLabel(c)}</button>`).join("")}</div>` +
+    `<div class="frow"><span class="flabel">☀️</span>${LIGHTS.map(([k,l]) => `<button data-l="${k}" class="fpill ${lightState[view]===k?"on":""}">${l}</button>`).join("")}</div>` +
+    `<div class="frow"><span class="flabel">🌱</span>${SOILS.map(([k,l]) => `<button data-s="${k}" class="fpill ${soilState[view]===k?"on":""}">${l}</button>`).join("")}</div>`;
+
+  $(`${view}-search`).oninput = (e) => { searchState[view] = e.target.value; applyFilters(view, rows); };
+  filt.querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => { filterState[view] = b.dataset.c; drawCollection(view, rows); }));
+  filt.querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { lightState[view] = b.dataset.l; drawCollection(view, rows); }));
+  filt.querySelectorAll("[data-s]").forEach((b) => (b.onclick = () => { soilState[view] = b.dataset.s; drawCollection(view, rows); }));
+
+  applyFilters(view, rows);
+}
+
+function applyFilters(view, rows) {
+  const grid = $(view + "-grid");
+  let shown = rows.filter((r) => filterState[view] === "all" || r.category === filterState[view]);
+  if (searchState[view].trim()) {
+    const q = searchState[view].toLowerCase();
+    shown = shown.filter((r) =>
+      (r.nickname||"").toLowerCase().includes(q) ||
+      (r.common_name||"").toLowerCase().includes(q) ||
+      (r.species||"").toLowerCase().includes(q)
+    );
+  }
+  if (lightState[view] !== "any") shown = shown.filter((r) => lightBucket(r) === lightState[view]);
+  if (soilState[view]  !== "any") shown = shown.filter((r) => soilBucket(r)  === soilState[view]);
   if (!shown.length) {
     grid.innerHTML = emptyState(
       view === "mine"
@@ -849,6 +895,8 @@ async function runAppraise(btn) {
     d.established = out.established;
     await persistResultIfSaved();
     render(d);
+    const chip = $("value-chip");
+    if (chip) chip.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = "💲 Check resale value — retry"; }
   }
@@ -887,13 +935,29 @@ function rcard(title, score, price, meta, notes) {
 }
 
 function renderResale(d) {
+  const chip = $("value-chip");
   if (!d.marketability) {
     $("resale-sec").style.display = "none";
+    if (chip) chip.style.display = "none";
     return;
   }
   $("resale-sec").style.display = "block";
   const m = d.marketability || {};
   const e = d.established;
+  if (chip) {
+    chip.style.display = "block";
+    chip.innerHTML = `<div class="vchip">
+      <div class="vchip-row">
+        <span class="vchip-icon">💲</span>
+        <div class="vchip-vals">
+          <div class="vchip-line"><span class="vchip-type">Cuttings</span><span class="vchip-range">${esc(m.est_price_range||"—")}</span></div>
+          ${e ? `<div class="vchip-line"><span class="vchip-type">Whole plant</span><span class="vchip-range">${esc(e.est_price_range||"—")}</span></div>` : ""}
+        </div>
+        <div class="vchip-score">${m.score||"—"}<span class="vchip-denom">/10</span></div>
+      </div>
+      <div class="vchip-sub">${[cap(m.demand)+" demand", cap(m.rarity), cap(m.propagation_ease)+" to propagate"].filter(Boolean).join(" · ")}</div>
+    </div>`;
+  }
   let html = `<div class="resale2">`;
   html += rcard(
     "✂️ Cuttings / props",
