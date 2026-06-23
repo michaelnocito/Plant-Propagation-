@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -40,6 +42,12 @@ class Temp(BaseModel):
     note: str = ""
 
 
+class PotType(BaseModel):
+    ideal: str   # best material + why
+    good: str    # acceptable alternatives
+    never: str   # what to avoid and why
+
+
 class Care(BaseModel):
     """Everything needed to keep this plant thriving."""
 
@@ -52,6 +60,7 @@ class Care(BaseModel):
     water_short: str  # one-line watering for the summary view
     humidity: str
     feeding: str
+    pot: Optional[PotType] = None
 
 
 class DiagnosisIssue(BaseModel):

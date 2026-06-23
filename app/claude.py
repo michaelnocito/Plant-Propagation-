@@ -45,7 +45,12 @@ Return ONLY a JSON object (no markdown, no prose) with these exact keys:
     "watering": "describe by soil feel ('water when top X inches are dry'), how to water, and the over- vs under-water tells",
     "water_short": "ONE short line (e.g. 'When top 2 in. dry — roughly weekly')",
     "humidity": "target range + how to raise it if needed",
-    "feeding": "fertilizer type, strength, and season/cadence"
+    "feeding": "fertilizer type, strength, and season/cadence",
+    "pot": {{
+      "ideal": "best pot material + short reason (e.g. 'Terracotta — breathable, prevents root rot')",
+      "good": "1-2 acceptable alternatives (e.g. 'Glazed ceramic or plastic with drainage holes')",
+      "never": "what to avoid and exactly why (e.g. 'Non-draining decorative pots — traps moisture, causes rot')"
+    }}
   }}
 }}
 
@@ -126,7 +131,7 @@ def _parse(msg) -> dict:
 async def enrich_core(species: str, common: str) -> PropResult:
     """Fast text-only pass: identity + care + propagation + edible (no pricing/diagnosis)."""
     msg = await client.messages.create(
-        model=MODEL, max_tokens=2600,
+        model=MODEL, max_tokens=2900,
         messages=[{"role": "user", "content": CORE_PROMPT.format(species=species, common=common)}],
     )
     return PropResult.model_validate(_parse(msg))

@@ -710,9 +710,11 @@ function renderSummary(d) {
       ${e ? `<div class="sv-item"><span class="sv-k">🪴 Whole plant</span><span class="sv-p">${esc(e.est_price_range || "—")}</span><span class="sv-s">${e.score ?? "–"}/10</span></div>` : ""}
     </div>`;
   }
+  const potIdeal = c.pot?.ideal ? c.pot.ideal.split("—")[0].split("(")[0].split(",")[0].trim() : null;
   const tiles = [
     ["☀️ Sun", sunThriving(c)], ["🪴 Soil", soilShort(c)], ["💧 Water", waterShort(c)],
     ["🌡️ Temp", tempIdeal(c)], ["💦 Humidity", c.humidity || "—"],
+    ...(potIdeal ? [["🏺 Pot", potIdeal]] : []),
   ];
   html += `<div class="sgrid">${tiles
     .map(([k, v]) => `<div class="stile"><div class="sk">${k}</div><div class="sv">${esc(v)}</div></div>`)
@@ -735,6 +737,14 @@ function renderCareDetail(c) {
   html += `<div class="care" style="margin-top:15px">${rows
     .map(([k, v]) => `<div class="c"><b>${k}</b><span>${esc(v)}</span></div>`)
     .join("")}</div>`;
+  if (c.pot) {
+    html += `<div class="caresub" style="margin-top:15px">🏺 Pot type</div>
+    <div class="care">
+      <div class="c"><b class="pot-ideal">✓ Ideal</b><span>${esc(c.pot.ideal)}</span></div>
+      <div class="c"><b class="pot-good">· Good</b><span>${esc(c.pot.good)}</span></div>
+      <div class="c"><b class="pot-never">✗ Never</b><span>${esc(c.pot.never)}</span></div>
+    </div>`;
+  }
   $("care").innerHTML = html;
 }
 
