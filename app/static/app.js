@@ -115,14 +115,14 @@ pick.addEventListener("change", async (e) => {
   card.style.display = "none";
   status.className = "status";
   status.textContent = "";
-  const blob = await compress(file);
-  lastBlob = blob;
-  lastThumb = await thumbDataURL(file);
-  lastPhotoData = await blobToDataURL(blob);
-  $("thumb").src = URL.createObjectURL(blob);
-  $("thumb").style.display = "block";
   startLoader();
   try {
+    const blob = await compress(file);
+    lastBlob = blob;
+    lastThumb = await thumbDataURL(file);
+    lastPhotoData = await blobToDataURL(blob);
+    $("thumb").src = URL.createObjectURL(blob);
+    $("thumb").style.display = "block";
     showResult(await propagate(blob), null, "");
     status.textContent = "";
   } catch (err) {
@@ -130,7 +130,10 @@ pick.addEventListener("change", async (e) => {
     status.textContent =
       err.status === 422
         ? "Couldn't spot a plant — try a clearer, closer shot."
+        : err.message && err.message.includes("compress")
+        ? "Couldn't read that photo — try a different one."
         : "That took too long or failed — tap the photo button to try again.";
+    console.error("[rootwork] upload failed:", err);
   } finally {
     stopLoader();
   }
