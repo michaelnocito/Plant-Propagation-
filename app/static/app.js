@@ -692,7 +692,7 @@ const emptyState = (msg) => `<div class="empty" style="grid-column:1/-1">${EMPTY
 const hasLight = (c) => !!(c && c.light && typeof c.light === "object");
 const hasTemp = (c) => !!(c && c.temp && typeof c.temp === "object");
 const sunThriving = (c) => (hasLight(c) ? c.light.thriving : c.sunlight || "—");
-const soilShort = (c) => c.soil_short || c.soil_store_bought || "—";
+const soilShort = (c) => (c.soil_custom && c.soil_custom.name) ? ("🌿 " + c.soil_custom.name) : (c.soil_short || c.soil_store_bought || "—");
 const waterShort = (c) => c.water_short || c.watering || "—";
 const tempIdeal = (c) => (hasTemp(c) ? `${c.temp.ideal_low_f}–${c.temp.ideal_high_f}°F sweet spot` : c.temperature || "—");
 
@@ -749,10 +749,25 @@ function renderSummary(d) {
 }
 
 function renderCareDetail(c) {
-  let html = `<div class="soil2">
+  const cu = c.soil_custom;
+  let html = "";
+  if (cu) {
+    const ings = (cu.ingredients || []).map((i) => `<div class="ing"><span>${esc(i.name)}</span><b>${esc(i.parts || "")}</b></div>`).join("");
+    html += `<div class="myblend">
+      <div class="myblend-h"><span>🌿 Your blend</span><button class="blendedit" data-blend="edit">✎ Change</button></div>
+      <div class="myblend-name">${esc(cu.name || "Custom blend")}</div>
+      ${cu.ratio ? `<div class="myblend-ratio">${esc(cu.ratio)}</div>` : ""}
+      ${ings ? `<div class="myblend-ings">${ings}</div>` : ""}
+      ${cu.note ? `<div class="myblend-note">${esc(cu.note)}</div>` : ""}
+      <button class="blendremove" data-blend="remove">Remove — use the app's suggestion</button>
+    </div>
+    <div class="caresub">App's suggestion</div>`;
+  }
+  html += `<div class="soil2">
     <div class="soilopt"><b>Buy it · all-in-one</b><span>${esc(c.soil_store_bought)}</span></div>
     <div class="soilopt"><b>Mix it · DIY</b><span>${esc(c.soil_diy)}</span></div>
   </div>`;
+  if (!cu) html += `<button class="setblend" data-blend="set">✎ Set your own blend for this plant</button>`;
   if (hasLight(c)) html += `<div class="caresub">Light — survives → thrives → too much</div>${lightZones(c.light)}`;
   else if (c.sunlight) html += `<div class="caresub">Sunlight</div><div class="care"><div class="c"><span>${esc(c.sunlight)}</span></div></div>`;
   if (hasTemp(c)) html += `<div class="caresub">Temperature</div>${tempBar(c.temp)}`;
@@ -770,6 +785,7 @@ function renderCareDetail(c) {
     </div>`;
   }
   $("care").innerHTML = html;
+  $("care").querySelectorAll("[data-blend]").forEach((b) => (b.onclick = () => blendAction(b.dataset.blend)));
 }
 
 /* summary ⇄ detail toggle (sticky preference; opens on Summary by default) */
@@ -1209,8 +1225,27 @@ let pantry = {}; // component key -> "have" | "exclude" (absent = don't have)
 let soilView = "recipes";
 let soilPacks = [];
 let currentSoil = null;
+let customRecipes = []; // household-authored recipes from the server
 
-function loadSoil() {
+async function loadCustomRecipes() {
+  try { customRecipes = await (await fetch("/recipes")).json(); }
+  catch (e) { customRecipes = []; }
+}
+// built-in + custom, normalized to one shape for pickers/snapshots
+function allRecipes() {
+  const custom = customRecipes.map((r) => ({
+    id: r.id, name: r.name, ratio: r.ratio, ingredients: r.ingredients || [],
+    suits: r.suits || [], note: r.note || "", custom: true, owner: r.owner,
+  }));
+  const builtin = RECIPES.map((r) => ({
+    key: r.key, name: r.name, ratio: r.ratio, ingredients: r.ingredients || [],
+    suits: r.suits || [], note: r.method || "", custom: false,
+  }));
+  return custom.concat(builtin);
+}
+
+async function loadSoil() {
+  await loadCustomRecipes();
   renderRecipes();
   setSoilView(soilView);
 }
@@ -1361,14 +1396,193 @@ function renderRecipes() {
         <button class="makebtn" data-make="${r.key}">＋ Make a batch from this</button>
       </div></div>`;
   }).join("");
+  // custom (household-authored) recipes — editable/deletable by their owner
+  const customCards = customRecipes.map((r) => {
+    const ings = (r.ingredients || []).map((i) => `<div class="ing"><span>${esc(i.name)}</span><b>${esc(i.parts || "")}</b></div>`).join("");
+    const mine = r.owner === me;
+    const who = (memberBy(r.owner) || {}).display_name || "";
+    return `<div class="recipe" data-key="c-${r.id}">
+      <div class="recipe-h"><div><div class="rn">${esc(r.name)}${who ? `<span class="mineflag">· ${esc(who)}</span>` : ""}</div><span class="rmeta">${esc(r.ratio || "")}</span></div><span class="chev">▾</span></div>
+      <div class="recipe-body">
+        ${ings ? `<div class="rsub">Mix (parts by volume)</div>${ings}` : ""}
+        ${(r.suits && r.suits.length) ? `<div class="rsub">Good for</div><div class="suits">${r.suits.map((s) => `<span>${esc(s)}</span>`).join("")}</div>` : ""}
+        ${r.note ? `<div class="rsub">How</div><div class="rtip">${esc(r.note)}</div>` : ""}
+        <button class="makebtn" data-cmake="${r.id}">＋ Make a batch from this</button>
+        ${mine ? `<div class="rmanage"><button data-cedit="${r.id}">✎ Edit</button><button class="rdel" data-cdel="${r.id}">Delete</button></div>` : ""}
+      </div></div>`;
+  }).join("");
+  const yourSection =
+    `<div class="rsub" style="margin:18px 0 8px">Your recipes</div>` +
+    `<button class="recnew" id="recNew">＋ New recipe</button>` +
+    (customCards || `<div class="rtip" style="margin-bottom:6px">No custom recipes yet — tap ＋ New recipe, or save one from a plant's Soil section.</div>`);
   box.innerHTML = sync + pantryUI +
     `<div class="rsub" style="margin:18px 0 8px">Maker's guide</div>${guides}` +
-    `<div class="rsub" style="margin:18px 0 8px">${active ? "Recipes — ranked by what you have" : "Recipes — pick the right blend per plant"}</div>${recipes}`;
+    yourSection +
+    `<div class="rsub" style="margin:18px 0 8px">${active ? "Built-in recipes — ranked by what you have" : "Built-in recipes — pick the right blend per plant"}</div>${recipes}`;
   $("syncBtn").onclick = runRecipeSync;
+  $("recNew").onclick = () => openRecipeEditor(null, {});
   if ($("pantryClear")) $("pantryClear").onclick = () => { pantry = {}; renderRecipes(); };
   box.querySelectorAll("[data-comp]").forEach((b) => (b.onclick = () => cyclePantry(b.dataset.comp)));
   box.querySelectorAll(".recipe-h").forEach((h) => (h.onclick = () => h.parentElement.classList.toggle("open")));
   box.querySelectorAll("[data-make]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); makePack(b.dataset.make); }));
+  box.querySelectorAll("[data-cmake]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); makeCustomPack(+b.dataset.cmake); }));
+  box.querySelectorAll("[data-cedit]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); openRecipeEditor(customRecipes.find((x) => x.id === +b.dataset.cedit), {}); }));
+  box.querySelectorAll("[data-cdel]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); deleteCustomRecipe(+b.dataset.cdel); }));
+}
+
+/* ---------- custom recipe CRUD + editor + per-plant blend picker ---------- */
+async function createRecipe(body) {
+  try {
+    const r = await fetch("/recipes", { method: "POST", headers: { "Content-Type": "application/json", "X-User": me }, body: JSON.stringify(body) });
+    if (r.ok) return await r.json();
+  } catch (e) { /* fall through */ }
+  alert("Couldn't save that recipe — try again.");
+  return null;
+}
+async function patchRecipe(id, body) {
+  try { await fetch("/recipes/" + id, { method: "PATCH", headers: { "Content-Type": "application/json", "X-User": me }, body: JSON.stringify(body) }); }
+  catch (e) { /* keep UI */ }
+}
+async function deleteCustomRecipe(id) {
+  if (!confirm("Delete this recipe? (Plants already using it keep their saved copy.)")) return;
+  try { await fetch("/recipes/" + id, { method: "DELETE", headers: { "X-User": me } }); } catch (e) { /* ignore */ }
+  await loadCustomRecipes();
+  renderRecipes();
+}
+async function makeCustomPack(id) {
+  if (!me) return showPicker();
+  const r = customRecipes.find((x) => x.id === id);
+  if (!r) return;
+  const pack = await postSoil({
+    name: r.name, recipe_key: "custom", size: "1 Quart",
+    recipe: { ingredients: r.ingredients || [], suits: r.suits || [] }, visibility: "family", in_market: false,
+  });
+  if (pack) { setSoilView("packs"); openSoil(pack); }
+}
+
+function closeRecipeSheet() { $("recipeSheet").classList.remove("on"); recipeEditCtx = null; }
+let recipeEditCtx = null;
+
+function ingRowHtml(i) {
+  return `<div class="ingrow"><input type="text" class="iname" value="${esc(i.name || "")}" placeholder="Ingredient"><input type="text" class="iparts" value="${esc(i.parts || "")}" placeholder="parts"><button class="ingdel" type="button" aria-label="remove">✕</button></div>`;
+}
+function wireIngDel(row) { const b = row.querySelector(".ingdel"); if (b) b.onclick = () => row.remove(); }
+
+function openRecipeEditor(existing, opts = {}) {
+  if (!me) return showPicker();
+  // Starting a fresh per-plant blend: pre-fill with the app's suggestion so it's "edit", not "from scratch".
+  if (!existing && opts.forPlant && currentResult && currentResult.care) {
+    existing = { ratio: currentResult.care.soil_short || "", note: currentResult.care.soil_diy || "" };
+  }
+  recipeEditCtx = { id: existing && existing.id ? existing.id : null, forPlant: !!opts.forPlant };
+  const e = existing || {};
+  const ings = (e.ingredients && e.ingredients.length) ? e.ingredients : [{ name: "", parts: "" }];
+  const title = recipeEditCtx.id ? "Edit recipe" : (opts.forPlant ? "Your blend for this plant" : "New recipe");
+  const sub = opts.forPlant
+    ? "This replaces the app's soil suggestion for this plant. Your blend shows above it."
+    : "Saved to your Soil Lab and shared with the family.";
+  $("recipeBody").innerHTML = `<div class="sheet-h">${title}</div>
+    <div class="sheet-sub">${sub}</div>
+    <div class="rform">
+      <label>Name</label><input type="text" id="rfName" value="${esc(e.name || "")}" placeholder="e.g. My chunky aroid v2">
+      <label>Ratio (one line)</label><input type="text" id="rfRatio" value="${esc(e.ratio || "")}" placeholder="e.g. 2 bark : 2 perlite : 1 coir">
+      <label>Ingredients (optional)</label>
+      <div id="rfIngs">${ings.map(ingRowHtml).join("")}</div>
+      <button class="ingadd" id="rfIngAdd" type="button">＋ Add ingredient</button>
+      <label>Good for (optional, comma-separated)</label><input type="text" id="rfSuits" value="${esc((e.suits || []).join(", "))}" placeholder="Monstera, Pothos">
+      <label>Notes / how-to (optional)</label><textarea id="rfNote" placeholder="Mixing tips, why this works…">${esc(e.note || "")}</textarea>
+      ${opts.forPlant ? `<label class="savecheck"><input type="checkbox" id="rfSave" checked> Also save to Soil Lab (reuse on other plants)</label>` : ""}
+      <button class="rsave" id="rfSaveBtn" type="button">Save${opts.forPlant ? " blend" : " recipe"}</button>
+      <button class="rcancel" id="rfCancel" type="button">Cancel</button>
+    </div>`;
+  $("recipeSheet").classList.add("on");
+  $("rfIngs").querySelectorAll(".ingrow").forEach(wireIngDel);
+  $("rfIngAdd").onclick = () => {
+    const d = document.createElement("div");
+    d.innerHTML = ingRowHtml({ name: "", parts: "" });
+    const row = d.firstElementChild;
+    $("rfIngs").appendChild(row);
+    wireIngDel(row);
+  };
+  $("rfSaveBtn").onclick = saveRecipeForm;
+  $("rfCancel").onclick = closeRecipeSheet;
+}
+
+function collectRecipeForm() {
+  const ingredients = [...$("rfIngs").querySelectorAll(".ingrow")]
+    .map((r) => ({ name: r.querySelector(".iname").value.trim(), parts: r.querySelector(".iparts").value.trim() }))
+    .filter((i) => i.name);
+  return {
+    name: $("rfName").value.trim(),
+    ratio: $("rfRatio").value.trim(),
+    ingredients,
+    suits: $("rfSuits").value.split(",").map((s) => s.trim()).filter(Boolean),
+    note: $("rfNote").value.trim(),
+  };
+}
+async function saveRecipeForm() {
+  const body = collectRecipeForm();
+  if (!body.name) { $("rfName").focus(); return; }
+  const ctx = recipeEditCtx;
+  const btn = $("rfSaveBtn"); btn.disabled = true; btn.textContent = "Saving…";
+  if (ctx.forPlant) {
+    const snapshot = { name: body.name, ratio: body.ratio, ingredients: body.ingredients, note: body.note, source: "custom" };
+    if ($("rfSave") && $("rfSave").checked) {
+      const rc = await createRecipe(body);
+      if (rc) { snapshot.source = "recipe"; snapshot.recipe_id = rc.id; }
+    }
+    await setPlantBlend(snapshot);
+    closeRecipeSheet();
+    return;
+  }
+  if (ctx.id) await patchRecipe(ctx.id, body);
+  else await createRecipe(body);
+  await loadCustomRecipes();
+  closeRecipeSheet();
+  renderRecipes();
+}
+
+async function openBlendPicker() {
+  if (!me) return showPicker();
+  if (!currentResult) return;
+  await loadCustomRecipes();
+  const recs = allRecipes();
+  const rows = recs.map((r, i) => `<div class="rpick" data-link="${i}">
+      <div><div class="rpn">${esc(r.name)}</div><div class="rpr">${esc(r.ratio || "")}</div></div>
+      <span class="rptag"${r.custom ? "" : ' style="color:var(--sepia);border-color:var(--rule)"'}>${r.custom ? "Yours" : "Built-in"}</span>
+    </div>`).join("");
+  $("recipeBody").innerHTML = `<div class="sheet-h">Set your blend</div>
+    <div class="sheet-sub">Pick one of your saved recipes for this plant, or type a quick custom blend. It shows above the app's suggestion.</div>
+    <button class="recnew" id="blendNew" type="button">＋ Type a new custom blend</button>
+    <div class="divlabel">Link a saved recipe</div>${rows}`;
+  $("recipeSheet").classList.add("on");
+  $("blendNew").onclick = () => openRecipeEditor(null, { forPlant: true });
+  $("recipeBody").querySelectorAll("[data-link]").forEach((el) => (el.onclick = () => linkRecipeToPlant(recs[+el.dataset.link])));
+}
+function linkRecipeToPlant(r) {
+  if (!r) return;
+  const snapshot = { name: r.name, ratio: r.ratio, ingredients: r.ingredients || [], note: r.note || "", source: r.custom ? "recipe" : "builtin" };
+  if (r.custom) snapshot.recipe_id = r.id; else snapshot.recipe_key = r.key;
+  setPlantBlend(snapshot);
+  closeRecipeSheet();
+}
+async function setPlantBlend(snapshot) {
+  if (!currentResult) return;
+  currentResult.care = currentResult.care || {};
+  currentResult.care.soil_custom = snapshot;
+  await persistResultIfSaved();
+  render(currentResult);
+}
+function blendAction(kind) {
+  if (kind === "remove") {
+    if (currentResult && currentResult.care) {
+      currentResult.care.soil_custom = null;
+      persistResultIfSaved();
+      render(currentResult);
+    }
+    return;
+  }
+  openBlendPicker(); // "set" or "edit/change"
 }
 function cyclePantry(k) {
   pantry[k] = pantry[k] === "have" ? "exclude" : pantry[k] === "exclude" ? undefined : "have";
@@ -1669,6 +1883,7 @@ $("restoreInput").onchange = async (e) => {
   }
 };
 $("soilClose").onclick = closeSoil;
+$("recipeClose").onclick = closeRecipeSheet;
 $("soilPhotoInput").onchange = async (e) => {
   const f = e.target.files[0]; e.target.value = "";
   if (!f || !currentSoil) return;

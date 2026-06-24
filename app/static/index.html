@@ -639,6 +639,42 @@
   .spack .sb{font-size:9px; text-transform:uppercase; letter-spacing:.4px; border-radius:999px; padding:2px 7px}
   .spack .sb.market{color:var(--madder-d); border:1px solid rgba(177,67,43,.4)}
   .spack .sb.sold{background:var(--sepia); color:var(--paper)}
+  /* per-plant "your blend" + custom-recipe management */
+  .myblend{background:linear-gradient(180deg,#eef3e6,#e7eed9); border:1px solid #b9c79f; border-radius:12px; padding:12px 14px; margin-bottom:12px}
+  .myblend-h{display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#5b7040; font-weight:700}
+  .myblend-name{font-family:"Iowan Old Style",Georgia,serif; font-size:17px; color:var(--inkg); margin-top:4px}
+  .myblend-ratio{font-size:13px; color:var(--sepia2); margin-top:2px}
+  .myblend-ings{margin-top:8px}
+  .myblend-note{font-size:13px; color:var(--inkg2); margin-top:8px; line-height:1.45}
+  .blendedit{background:none; border:1px solid #b9c79f; color:#5b7040; border-radius:7px; padding:3px 9px; font-size:11px; font-weight:700; cursor:pointer}
+  .blendremove{background:none; border:none; color:var(--madder-d); font-size:12.5px; cursor:pointer; margin-top:10px; padding:2px 0; text-decoration:underline}
+  .setblend{width:100%; border:1px dashed var(--inkg2); border-radius:10px; padding:11px; background:var(--paper2); color:var(--inkg2); font-size:13.5px; font-weight:600; cursor:pointer; margin:2px 0 4px}
+  /* recipe editor form */
+  .rform label{display:block; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--sepia2); margin:12px 0 4px}
+  .rform input[type=text], .rform textarea{width:100%; box-sizing:border-box; background:var(--card); border:1px solid var(--rule); border-radius:8px; padding:9px 11px; font-size:14.5px; color:var(--inkg); font-family:inherit}
+  .rform textarea{min-height:62px; resize:vertical}
+  .ingrow{display:flex; gap:8px; margin-top:6px}
+  .ingrow input.iname{flex:1}
+  .ingrow input.iparts{width:74px}
+  .ingrow .ingdel{background:none; border:1px solid var(--rule); color:var(--madder-d); border-radius:8px; width:38px; cursor:pointer; flex:none}
+  .ingadd{background:none; border:1px dashed var(--inkg2); color:var(--inkg2); border-radius:8px; padding:7px 12px; font-size:13px; cursor:pointer; margin-top:8px}
+  .rsave{width:100%; border:none; border-radius:10px; padding:12px; margin-top:16px; font-size:15px; font-weight:600; background:var(--inkg); color:var(--paper); cursor:pointer}
+  .rcancel{width:100%; border:none; background:none; color:var(--sepia); font-size:13.5px; cursor:pointer; margin-top:8px; padding:6px}
+  .savecheck{display:flex; align-items:center; gap:9px; margin-top:14px; font-size:13.5px; color:var(--inkg2)}
+  .savecheck input{width:18px; height:18px; flex:none}
+  /* link-an-existing-recipe list + custom recipe management */
+  .rpick{border:1px solid var(--rule); background:var(--card); border-radius:10px; padding:11px 13px; margin-top:8px; cursor:pointer; display:flex; justify-content:space-between; gap:10px; align-items:center}
+  .rpick .rpn{font-weight:600; color:var(--inkg); font-size:14.5px}
+  .rpick .rpr{font-size:12px; color:var(--sepia); margin-top:2px}
+  .rpick .rptag{font-size:9px; text-transform:uppercase; letter-spacing:.4px; color:var(--madder-d); border:1px solid rgba(156,82,50,.4); border-radius:999px; padding:2px 7px; flex:none}
+  .rmanage{display:flex; gap:8px; margin-top:10px}
+  .rmanage button{flex:1; border:1px solid var(--rule); background:var(--paper2); color:var(--inkg2); border-radius:8px; padding:8px; font-size:13px; cursor:pointer}
+  .rmanage .rdel{color:var(--madder-d)}
+  .recnew{width:100%; border:1px dashed var(--inkg2); border-radius:12px; padding:13px; background:var(--paper2); color:var(--inkg2); font-size:14.5px; font-weight:600; cursor:pointer; margin-bottom:14px}
+  .sheet-h{font-family:"Iowan Old Style",Georgia,serif; font-size:22px; color:var(--inkg); margin:2px 0 4px}
+  .sheet-sub{font-size:13.5px; color:var(--sepia); margin-bottom:10px; line-height:1.4}
+  .divlabel{font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--sepia2); margin:18px 0 6px}
+  .mineflag{font-size:10px; color:var(--sepia); margin-left:6px}
   /* sheet overlay (soil pack detail) */
   .sheet{position:fixed; inset:0; z-index:50; background:var(--paper); display:none; overflow-y:auto;
     padding:0 0 40px}
@@ -895,6 +931,12 @@
 <div id="soilDetail" class="sheet">
   <button class="lb-close" id="soilClose" aria-label="close">✕</button>
   <div class="sheet-inner" id="soilBody"></div>
+</div>
+
+<!-- recipe editor / per-plant blend picker sheet -->
+<div id="recipeSheet" class="sheet">
+  <button class="lb-close" id="recipeClose" aria-label="close">✕</button>
+  <div class="sheet-inner" id="recipeBody"></div>
 </div>
 
 <!-- photo lightbox -->

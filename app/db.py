@@ -125,6 +125,22 @@ class Seed(Base):
     owner: Mapped[User] = relationship()
 
 
+class Recipe(Base):
+    """A custom soil-mix recipe the household creates/edits (the built-in recipes live in the frontend)."""
+
+    __tablename__ = "recipes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    name: Mapped[str] = mapped_column(String(120), default="")
+    ratio: Mapped[str] = mapped_column(String(160), default="")  # e.g. "2 coir : 1 perlite"
+    ingredients: Mapped[str] = mapped_column(Text, default="[]")  # JSON [{name, parts}]
+    suits: Mapped[str] = mapped_column(Text, default="[]")  # JSON [str]
+    note: Mapped[str] = mapped_column(Text, default="")  # how-to / why
+    visibility: Mapped[str] = mapped_column(String(16), default="family")
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+    owner: Mapped[User] = relationship()
+
+
 async def _ensure_columns(conn) -> None:
     """Tiny forward-only migration: add columns missing from an existing plants table
     (create_all only creates missing TABLES, not new columns on existing ones)."""

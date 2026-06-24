@@ -247,6 +247,40 @@ class SoilPackOut(BaseModel):
     created_at: str
 
 
+# ---- custom soil recipes (household-authored; built-ins live in the frontend) ----
+
+
+class RecipeIn(BaseModel):
+    name: str
+    ratio: str = ""
+    ingredients: list[dict] = []  # [{name, parts}]
+    suits: list[str] = []
+    note: str = ""
+    visibility: str = "family"
+
+
+class RecipePatch(BaseModel):
+    name: str | None = None
+    ratio: str | None = None
+    ingredients: list[dict] | None = None
+    suits: list[str] | None = None
+    note: str | None = None
+    visibility: str | None = None
+
+
+class RecipeOut(BaseModel):
+    id: int
+    owner: str
+    owner_name: str
+    owner_color: str
+    name: str
+    ratio: str
+    ingredients: list[dict]
+    suits: list[str]
+    note: str
+    created_at: str
+
+
 # ---- seeds (tracked & sold like plants; AI market appraisal, no analysis) ----
 
 

@@ -24,7 +24,7 @@ from .claude import (
     resale_options,
     sync_recipes,
 )
-from .db import MEMBERS, Photo, Plant, Seed, Session, SoilPack, User, get_user, init_db
+from .db import MEMBERS, Photo, Plant, Recipe, Seed, Session, SoilPack, User, get_user, init_db
 from .models import (
     CATEGORIES,
     VISIBILITIES,
@@ -36,6 +36,9 @@ from .models import (
     PlantIn,
     PlantOut,
     PlantPatch,
+    RecipeIn,
+    RecipeOut,
+    RecipePatch,
     SeedAppraiseIn,
     SeedIn,
     SeedOut,
@@ -625,6 +628,78 @@ async def delete_soil(soil_id: int, x_user: str | None = Header(default=None)):
         if not sp or sp.owner_id != user.id:
             raise HTTPException(404, "Not found.")
         await s.delete(sp)
+        await s.commit()
+        return {"ok": True}
+
+
+# ---- custom soil recipes (household-authored; shared with the family) ----
+
+
+def _recipe_out(rc: Recipe) -> RecipeOut:
+    return RecipeOut(
+        id=rc.id, owner=rc.owner.slug, owner_name=rc.owner.display_name, owner_color=rc.owner.color,
+        name=rc.name, ratio=rc.ratio, ingredients=json.loads(rc.ingredients or "[]"),
+        suits=json.loads(rc.suits or "[]"), note=rc.note, created_at=rc.created_at.isoformat(),
+    )
+
+
+@app.get("/recipes", response_model=list[RecipeOut])
+async def list_recipes():
+    """Every household-authored recipe (shared, like plants)."""
+    async with Session() as s:
+        rows = (await s.execute(
+            select(Recipe).options(selectinload(Recipe.owner)).order_by(Recipe.created_at.desc())
+        )).scalars().all()
+        return [_recipe_out(rc) for rc in rows]
+
+
+@app.post("/recipes", response_model=RecipeOut)
+async def create_recipe(body: RecipeIn, x_user: str | None = Header(default=None)):
+    if not body.name.strip():
+        raise HTTPException(400, "Name required.")
+    async with Session() as s:
+        user = await _require_user(s, x_user)
+        rc = Recipe(
+            owner_id=user.id, name=body.name.strip()[:120], ratio=body.ratio.strip()[:160],
+            ingredients=json.dumps(body.ingredients), suits=json.dumps(body.suits),
+            note=body.note.strip(), visibility="family",
+        )
+        s.add(rc)
+        await s.commit()
+        await s.refresh(rc, ["owner"])
+        return _recipe_out(rc)
+
+
+@app.patch("/recipes/{recipe_id}", response_model=RecipeOut)
+async def update_recipe(recipe_id: int, body: RecipePatch, x_user: str | None = Header(default=None)):
+    async with Session() as s:
+        user = await _require_user(s, x_user)
+        rc = await s.get(Recipe, recipe_id)
+        if not rc or rc.owner_id != user.id:
+            raise HTTPException(404, "Not found.")
+        if body.name is not None:
+            rc.name = body.name.strip()[:120]
+        if body.ratio is not None:
+            rc.ratio = body.ratio.strip()[:160]
+        if body.ingredients is not None:
+            rc.ingredients = json.dumps(body.ingredients)
+        if body.suits is not None:
+            rc.suits = json.dumps(body.suits)
+        if body.note is not None:
+            rc.note = body.note.strip()
+        await s.commit()
+        await s.refresh(rc, ["owner"])
+        return _recipe_out(rc)
+
+
+@app.delete("/recipes/{recipe_id}")
+async def delete_recipe(recipe_id: int, x_user: str | None = Header(default=None)):
+    async with Session() as s:
+        user = await _require_user(s, x_user)
+        rc = await s.get(Recipe, recipe_id)
+        if not rc or rc.owner_id != user.id:
+            raise HTTPException(404, "Not found.")
+        await s.delete(rc)
         await s.commit()
         return {"ok": True}
 
