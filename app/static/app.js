@@ -1009,7 +1009,14 @@ function renderResale(d) {
       `${cap(e.demand)} demand${e.best_size_to_sell ? ` · best at ${e.best_size_to_sell}` : ""}`,
       e.sell_notes
     );
-  $("resale").innerHTML = html + `</div>` + optionsHtml(d.options);
+  let extra = optionsHtml(d.options);
+  // Already appraised, but predates the resale-options feature — offer an in-place fill-in.
+  if (!d.options && d.marketability) {
+    extra = `<div class="ropts"><button class="exbtn optbtn" id="optBtn">💰 Show resale options</button></div>`;
+  }
+  $("resale").innerHTML = html + `</div>` + extra;
+  const ob = $("optBtn");
+  if (ob) ob.onclick = () => runAppraise(ob);
 }
 
 const DIFF_CLASS = { easy: "d-easy", moderate: "d-mod", hard: "d-hard" };
