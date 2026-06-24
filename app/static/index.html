@@ -423,6 +423,21 @@
   .care .c b{color:var(--sepia2)} .care .c span{color:var(--inkg)}
   .soilopt{background:var(--paper2)} .soilopt b{color:var(--madder-d)} .soilopt span{color:var(--inkg)}
 
+  /* "Meet this plant" — fun overview (summary blurb + detail card) */
+  .sabout{background:linear-gradient(180deg,#f3eede,#ece3cc); border:1px solid var(--rule); border-radius:12px; padding:12px 14px; margin-bottom:12px}
+  .sabout-tag{font-family:"Iowan Old Style",Georgia,serif; font-size:16px; color:var(--inkg); line-height:1.35}
+  .sabout-story{font-size:13.5px; color:var(--inkg2); line-height:1.5; margin-top:6px}
+  .about{background:linear-gradient(180deg,#f3eede,#ece3cc); border:1px solid var(--rule); border-radius:14px; padding:15px 16px}
+  .about-nick{font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--madder-d); font-weight:700}
+  .about-tag{font-family:"Iowan Old Style",Georgia,serif; font-size:19px; color:var(--inkg); line-height:1.3; margin-top:4px}
+  .about-story{font-size:14.5px; color:var(--inkg2); line-height:1.55; margin-top:9px}
+  .about-rows{margin-top:13px; display:grid; gap:9px}
+  .about-row b{display:block; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--sepia2)}
+  .about-row span{font-size:14px; color:var(--inkg); line-height:1.45}
+  .about-factsh{font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--madder-d); font-weight:700; margin:15px 0 6px}
+  .about-facts{margin:0; padding-left:20px; display:grid; gap:7px}
+  .about-facts li{font-size:14px; color:var(--inkg); line-height:1.5}
+
   /* resale ratings (light) */
   .rcard{background:var(--paper2); color:var(--inkg); border:1px solid var(--rule)}
   .rcard .rt{color:var(--madder-d); letter-spacing:.8px}
@@ -787,6 +802,11 @@
 
       <!-- DETAIL (full) -->
       <div id="detailBody">
+        <div class="sec" id="about-sec" style="display:none">
+          <h3 class="sec-h">Meet this plant</h3>
+          <div id="about"></div>
+        </div>
+
         <div class="sec" id="photos-sec">
           <h3 class="sec-h">Photos</h3>
           <div id="photos"></div>

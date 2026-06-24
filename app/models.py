@@ -90,10 +90,22 @@ class Edible(BaseModel):
     caution: str = ""  # toxic parts, poisonous lookalikes, must-cook, limits
 
 
+class About(BaseModel):
+    """Fun, memorable 'meet this plant' intro — playful, never mean."""
+
+    tagline: str = ""  # witty one-liner capturing its personality
+    nickname: str = ""  # charming archetype / pet-name
+    story: str = ""  # 2-3 warm sentences introducing it like a housemate
+    origin: str = ""  # where it grows wild + a vivid image
+    name_meaning: str = ""  # the backstory of its name (empty if unknown)
+    fun_facts: list[str] = []  # surprising, delightful facts
+
+
 class PropResult(BaseModel):
     species: str
     common_name: str
     confidence: float = 0.0
+    about: About | None = None  # fun overview (filled in the core pass)
     method: str
     difficulty: str
     timeline: str

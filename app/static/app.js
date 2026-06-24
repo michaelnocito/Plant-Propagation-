@@ -716,12 +716,41 @@ function lightZones(L) {
   </div>`;
 }
 
+function renderAbout(d) {
+  const a = d.about;
+  const sec = $("about-sec");
+  if (!a || typeof a !== "object" || !(a.tagline || a.story || a.nickname || (a.fun_facts || []).length)) {
+    sec.style.display = "none";
+    return;
+  }
+  sec.style.display = "block";
+  const facts = (a.fun_facts || []).filter(Boolean);
+  let html = `<div class="about">`;
+  if (a.nickname) html += `<div class="about-nick">“${esc(a.nickname)}”</div>`;
+  if (a.tagline) html += `<div class="about-tag">🌿 ${esc(a.tagline)}</div>`;
+  if (a.story) html += `<div class="about-story">${esc(a.story)}</div>`;
+  const rows = [["🌍 Wild home", a.origin], ["📖 Name story", a.name_meaning]].filter(([, v]) => v);
+  if (rows.length) html += `<div class="about-rows">${rows.map(([k, v]) => `<div class="about-row"><b>${k}</b><span>${esc(v)}</span></div>`).join("")}</div>`;
+  if (facts.length) {
+    html += `<div class="about-factsh">✨ Fun facts</div><ul class="about-facts">${facts.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>`;
+  }
+  html += `</div>`;
+  $("about").innerHTML = html;
+}
+
 function renderSummary(d) {
   const c = d.care || {};
   // marketplace value up top — what's this plant worth to sell
   const m = d.marketability || {};
   const e = d.established;
   let html = "";
+  const a = d.about;
+  if (a && typeof a === "object" && (a.tagline || a.story)) {
+    html += `<div class="sabout">
+      ${a.tagline ? `<div class="sabout-tag">🌿 ${esc(a.tagline)}</div>` : ""}
+      ${a.story ? `<div class="sabout-story">${esc(a.story)}</div>` : ""}
+    </div>`;
+  }
   const ed = d.edible;
   if (ed && typeof ed === "object") {
     const st = edStatus(ed);
@@ -837,6 +866,7 @@ function render(d) {
   $("name").textContent = d.common_name;
   $("latin").textContent = d.confidence ? `${d.species} · ${Math.round(d.confidence * 100)}% match` : d.species;
   renderExtras(d);
+  renderAbout(d);
   renderDiagnosis(d.diagnosis);
   renderSummary(d);
   renderCareDetail(d.care);

@@ -22,6 +22,14 @@ Return ONLY a JSON object (no markdown, no prose) with these exact keys:
 {{
   "species": "{species}",
   "common_name": "{common}",
+  "about": {{
+    "tagline": "a witty one-liner (≤10 words) capturing this plant's personality — playful and kind",
+    "nickname": "a charming personality archetype / pet-name for it (e.g. 'The Unkillable Optimist')",
+    "story": "2-3 warm, friendly sentences introducing the plant like a beloved housemate — its charm, quirks, what it's like to live with",
+    "origin": "where it grows wild in the world + one vivid image of that home",
+    "name_meaning": "the meaning or backstory of its name (botanical or common); empty string if genuinely unknown",
+    "fun_facts": ["3 surprising, delightful, memorable facts — the kind you'd repeat to a friend"]
+  }},
   "method": "best propagation method (e.g. water cutting, soil cutting, division, offsets)",
   "difficulty": "easy | moderate | hard",
   "timeline": "e.g. roots in 2-4 weeks",
@@ -55,6 +63,8 @@ Return ONLY a JSON object (no markdown, no prose) with these exact keys:
 }}
 
 LIGHT & TEMPERATURE must be RANGES with a real thriving zone — never a vague "low light".
+The "about" block must be FUN, warm and memorable — like introducing a friend. Never mean, dry, or
+negative about the plant; even a fussy or finicky plant is endearing and lovable.
 Order steps/care for a beginner. Output JSON only."""
 
 # --- APPRAISE: resale pricing (text-only, on-demand) ---
@@ -131,7 +141,7 @@ def _parse(msg) -> dict:
 async def enrich_core(species: str, common: str) -> PropResult:
     """Fast text-only pass: identity + care + propagation + edible (no pricing/diagnosis)."""
     msg = await client.messages.create(
-        model=MODEL, max_tokens=2900,
+        model=MODEL, max_tokens=3600,
         messages=[{"role": "user", "content": CORE_PROMPT.format(species=species, common=common)}],
     )
     return PropResult.model_validate(_parse(msg))
