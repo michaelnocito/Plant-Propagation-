@@ -282,9 +282,15 @@ async def sync_plant(plant_id: int, x_user: str | None = Header(default=None)):
         # Preserve on-demand fields already generated for this plant
         existing = json.loads(p.ai_result) if p.ai_result else {}
         merged = result.model_dump()
-        for key in ("marketability", "established", "diagnosis", "edible", "diagram_svg", "confidence"):
+        for key in ("marketability", "established", "options", "diagnosis", "edible", "diagram_svg", "confidence"):
             if existing.get(key) is not None:
                 merged[key] = existing[key]
+        # Backfill the new resale-options feature for plants appraised before it existed
+        if existing.get("marketability") and not existing.get("options"):
+            try:
+                merged["options"] = await resale_options(p.species, p.common_name)
+            except Exception:  # noqa: BLE001 — keep the rest of the sync even if options fail
+                pass
         p.ai_result = json.dumps(merged)
         await s.commit()
         await s.refresh(p, ["owner"])
