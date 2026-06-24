@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import io
 import json
@@ -20,6 +21,7 @@ from .claude import (
     diagram_plant,
     edible_plant,
     enrich_core,
+    resale_options,
     sync_recipes,
 )
 from .db import MEMBERS, Photo, Plant, Seed, Session, SoilPack, User, get_user, init_db
@@ -99,9 +101,16 @@ async def propagate(file: UploadFile):
 
 @app.post("/appraise")
 async def appraise(body: AppraiseIn):
-    """On-demand resale pricing (cuttings + whole plant) — fast, no photo."""
+    """On-demand resale read — pricing (cuttings + whole plant) + most profitable harvest options.
+
+    Both AI calls run concurrently so 'Check resale value' returns everything in one click.
+    """
     try:
-        return await appraise_plant(body.species, body.common_name)
+        pricing, options = await asyncio.gather(
+            appraise_plant(body.species, body.common_name),
+            resale_options(body.species, body.common_name),
+        )
+        return {**pricing, "options": options}
     except Exception as e:  # noqa: BLE001
         raise HTTPException(502, f"Appraise failed: {e}") from e
 

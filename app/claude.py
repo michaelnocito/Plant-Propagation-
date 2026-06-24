@@ -146,6 +146,56 @@ async def appraise_plant(species: str, common: str) -> dict:
     return _parse(msg)
 
 
+# --- RESALE OPTIONS: the most profitable ways to harvest this plant (text-only, on-demand) ---
+OPTIONS_PROMPT = """You are a plant-resale strategist. The plant is:
+species: {species}
+common name: {common}
+
+List the most PROFITABLE ways to harvest/sell THIS specific plant for resale, ordered MOST profitable
+first. Only include routes that genuinely apply to this species — examples of routes to consider:
+whole potted plant, rooted cuttings / propagations / starts, seed packets (ONLY if it sets saleable
+seed), dried flowers / bundles (ONLY if it's actually sold dried, e.g. lavender, statice, strawflower),
+fresh-cut stems, value-add (sachets, essential-oil, culinary/herb bundles) where genuinely real.
+
+Return ONLY a JSON object (no markdown) with these exact keys:
+{{
+  "harvest_options": [
+    {{
+      "method": "short name, e.g. 'Dried flower bundles', 'Rooted cuttings', 'Whole potted plant', 'Seed packets'",
+      "product": "what the buyer actually receives",
+      "difficulty": "easy | moderate | hard",
+      "effort": "time/work to produce it, e.g. 'sell as-is', '2-3 wks to root', '1-2 wks to dry'",
+      "est_value": "realistic price per unit, e.g. '$6-10 a bundle'",
+      "demand": "low | medium | high",
+      "best_venue": "where this route sells best",
+      "tip": "one concrete pricing or presentation tip"
+    }}
+  ],
+  "venues": [
+    {{
+      "name": "venue name",
+      "good_for": "which of the options above it suits",
+      "note": "one line: why it works here + a tip"
+    }}
+  ],
+  "top_pick": "one line: the single best money route for this plant + why"
+}}
+
+Order harvest_options MOST PROFITABLE first. Order venues by this priority: Facebook Marketplace first,
+then other local/online sites that fit (recommend specific ones — e.g. Craigslist, Nextdoor, OfferUp,
+local plant-swap Facebook groups, Etsy for dried goods/seeds), then craft shows / farmers markets
+(especially for potted plants and dried bundles). Be realistic and specific to this plant. Output JSON only."""
+
+
+async def resale_options(species: str, common: str) -> dict:
+    """On-demand: most profitable harvest/sell routes, rated by difficulty -> {harvest_options, venues, top_pick}."""
+    msg = await client.messages.create(
+        model=MODEL, max_tokens=1300,
+        messages=[{"role": "user", "content": OPTIONS_PROMPT.format(species=species, common=common or species)}],
+    )
+    return _parse(msg)
+
+
 # --- EDIBLE: foraging / kitchen (text-only, on-demand) ---
 EDIBLE_PROMPT = """Is a {common} ({species}) edible? Be conservative and safety-first.
 

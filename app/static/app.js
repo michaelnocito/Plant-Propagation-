@@ -927,6 +927,7 @@ async function runAppraise(btn) {
     const out = await r.json();
     d.marketability = out.marketability;
     d.established = out.established;
+    d.options = out.options || null;
     await persistResultIfSaved();
     render(d);
     const chip = $("value-chip");
@@ -1008,7 +1009,43 @@ function renderResale(d) {
       `${cap(e.demand)} demand${e.best_size_to_sell ? ` · best at ${e.best_size_to_sell}` : ""}`,
       e.sell_notes
     );
-  $("resale").innerHTML = html + `</div>`;
+  $("resale").innerHTML = html + `</div>` + optionsHtml(d.options);
+}
+
+const DIFF_CLASS = { easy: "d-easy", moderate: "d-mod", hard: "d-hard" };
+
+function optionsHtml(o) {
+  if (!o || !(o.harvest_options || []).length) return "";
+  let h = `<div class="ropts"><div class="ropts-h">💰 Best ways to make money on this plant</div>`;
+  if (o.top_pick) h += `<div class="rtop">⭐ ${esc(o.top_pick)}</div>`;
+  h += `<div class="optlist">`;
+  (o.harvest_options || []).forEach((x, i) => {
+    const diff = String(x.difficulty || "").toLowerCase();
+    h += `<div class="optcard">
+      <div class="optrow">
+        <span class="optrank">${i + 1}</span>
+        <span class="optname">${esc(x.method || "")}</span>
+        <span class="optval">${esc(x.est_value || "—")}</span>
+      </div>
+      <div class="optmeta">
+        <span class="diffbadge ${DIFF_CLASS[diff] || ""}">${cap(x.difficulty || "—")}</span>
+        ${x.demand ? `<span class="optdot">${cap(x.demand)} demand</span>` : ""}
+        ${x.effort ? `<span class="optdot">${esc(x.effort)}</span>` : ""}
+        ${x.best_venue ? `<span class="optdot">📍 ${esc(x.best_venue)}</span>` : ""}
+      </div>
+      ${x.product ? `<div class="optsub">${esc(x.product)}</div>` : ""}
+      ${x.tip ? `<div class="opttip">💡 ${esc(x.tip)}</div>` : ""}
+    </div>`;
+  });
+  h += `</div>`;
+  if ((o.venues || []).length) {
+    h += `<div class="venh">Where to sell — in priority order</div><ol class="venlist">`;
+    o.venues.forEach((v) => {
+      h += `<li><span class="venname">${esc(v.name || "")}</span>${v.good_for ? ` — <span class="venfor">${esc(v.good_for)}</span>` : ""}${v.note ? `<div class="vennote">${esc(v.note)}</div>` : ""}</li>`;
+    });
+    h += `</ol>`;
+  }
+  return h + `</div>`;
 }
 
 /* ---------- edible / foraging ---------- */
