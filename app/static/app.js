@@ -754,7 +754,7 @@ function renderCareDetail(c) {
   if (cu) {
     const ings = (cu.ingredients || []).map((i) => `<div class="ing"><span>${esc(i.name)}</span><b>${esc(i.parts || "")}</b></div>`).join("");
     html += `<div class="myblend">
-      <div class="myblend-h"><span>🌿 Your blend</span><button class="blendedit" data-blend="edit">✎ Change</button></div>
+      <div class="myblend-h"><span>🌿 Your blend</span><button class="blendedit" data-blend="edit">✎ Edit</button></div>
       <div class="myblend-name">${esc(cu.name || "Custom blend")}</div>
       ${cu.ratio ? `<div class="myblend-ratio">${esc(cu.ratio)}</div>` : ""}
       ${ings ? `<div class="myblend-ings">${ings}</div>` : ""}
@@ -1474,7 +1474,7 @@ function openRecipeEditor(existing, opts = {}) {
   if (!existing && opts.forPlant && currentResult && currentResult.care) {
     existing = { ratio: currentResult.care.soil_short || "", note: currentResult.care.soil_diy || "" };
   }
-  recipeEditCtx = { id: existing && existing.id ? existing.id : null, forPlant: !!opts.forPlant };
+  recipeEditCtx = { id: existing && existing.id ? existing.id : null, forPlant: !!opts.forPlant, linkedRecipeId: opts.linkedRecipeId || null };
   const e = existing || {};
   const ings = (e.ingredients && e.ingredients.length) ? e.ingredients : [{ name: "", parts: "" }];
   const title = recipeEditCtx.id ? "Edit recipe" : (opts.forPlant ? "Your blend for this plant" : "New recipe");
@@ -1491,7 +1491,7 @@ function openRecipeEditor(existing, opts = {}) {
       <button class="ingadd" id="rfIngAdd" type="button">＋ Add ingredient</button>
       <label>Good for (optional, comma-separated)</label><input type="text" id="rfSuits" value="${esc((e.suits || []).join(", "))}" placeholder="Monstera, Pothos">
       <label>Notes / how-to (optional)</label><textarea id="rfNote" placeholder="Mixing tips, why this works…">${esc(e.note || "")}</textarea>
-      ${opts.forPlant ? `<label class="savecheck"><input type="checkbox" id="rfSave" checked> Also save to Soil Lab (reuse on other plants)</label>` : ""}
+      ${opts.forPlant ? `<label class="savecheck"><input type="checkbox" id="rfSave" checked> ${opts.linkedRecipeId ? "Also update the saved recipe in Soil Lab" : "Also save to Soil Lab (reuse on other plants)"}</label>` : ""}
       <button class="rsave" id="rfSaveBtn" type="button">Save${opts.forPlant ? " blend" : " recipe"}</button>
       <button class="rcancel" id="rfCancel" type="button">Cancel</button>
     </div>`;
@@ -1526,8 +1526,12 @@ async function saveRecipeForm() {
   const ctx = recipeEditCtx;
   const btn = $("rfSaveBtn"); btn.disabled = true; btn.textContent = "Saving…";
   if (ctx.forPlant) {
-    const snapshot = { name: body.name, ratio: body.ratio, ingredients: body.ingredients, note: body.note, source: "custom" };
-    if ($("rfSave") && $("rfSave").checked) {
+    const snapshot = { name: body.name, ratio: body.ratio, ingredients: body.ingredients, suits: body.suits, note: body.note, source: "custom" };
+    const doSave = $("rfSave") && $("rfSave").checked;
+    if (doSave && ctx.linkedRecipeId) {
+      await patchRecipe(ctx.linkedRecipeId, body);  // edit the linked recipe in place
+      snapshot.source = "recipe"; snapshot.recipe_id = ctx.linkedRecipeId;
+    } else if (doSave) {
       const rc = await createRecipe(body);
       if (rc) { snapshot.source = "recipe"; snapshot.recipe_id = rc.id; }
     }
@@ -1582,7 +1586,11 @@ function blendAction(kind) {
     }
     return;
   }
-  openBlendPicker(); // "set" or "edit/change"
+  if (kind === "edit") {
+    const cu = currentResult && currentResult.care && currentResult.care.soil_custom;
+    if (cu) return openRecipeEditor(cu, { forPlant: true, linkedRecipeId: cu.recipe_id || null });
+  }
+  openBlendPicker(); // "set" — pick a recipe or type a new one
 }
 function cyclePantry(k) {
   pantry[k] = pantry[k] === "have" ? "exclude" : pantry[k] === "exclude" ? undefined : "have";
